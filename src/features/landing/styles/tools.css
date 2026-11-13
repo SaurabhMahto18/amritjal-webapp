@@ -1,0 +1,98 @@
+
+/* =========================================
+   AMRIT JAL - TOOLS
+========================================= */
+
+.tools-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: #f5f4ef;
+
+  background-image:
+    linear-gradient(
+      rgba(16, 31, 53, 0.035) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(16, 31, 53, 0.035) 1px,
+      transparent 1px
+    );
+
+  background-size: 42px 42px;
+}
+
+.tools-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 340px;
+  height: 340px;
+  top: -120px;
+  left: -130px;
+  border-radius: 50%;
+  background: rgba(99, 214, 210, 0.22);
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.tools-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 360px;
+  height: 360px;
+  right: -150px;
+  bottom: -120px;
+  border-radius: 50%;
+  background: rgba(99, 214, 210, 0.18);
+  filter: blur(100px);
+  pointer-events: none;
+}
+
+/* INPUTS */
+
+.tools-input {
+  min-height: 44px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tools-input::placeholder {
+  color: #9AA6B2;
+  font-weight: 400;
+}
+
+.tools-input::-webkit-inner-spin-button,
+.tools-input::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+/* ACCESSIBILITY */
+
+.tools-input:focus-visible {
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .tools-hero {
+    background-size: 32px 32px;
+  }
+
+  .tools-hero::before,
+  .tools-hero::after {
+    width: 220px;
+    height: 220px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tools-hero *,
+  .tools-hero *::before,
+  .tools-hero *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

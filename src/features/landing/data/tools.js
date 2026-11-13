@@ -1,0 +1,170 @@
+
+export const tools = [
+  {
+    id: "home-water-expense",
+    number: "01",
+    title: "Home Water Expense Calculator",
+    shortTitle: "Home Water Expense",
+    description:
+      "Estimate your household's water expense from consumption, jar size and price per jar.",
+    category: "Home",
+    icon: "water",
+    seoTitle: "Home Water Expense Calculator | Amrit Jal",
+    seoDescription:
+      "Estimate household water consumption, monthly jar requirements and water expenses with the free Amrit Jal calculator.",
+    fields: [
+      {
+        name: "people",
+        label: "People in your home",
+        placeholder: "Enter people",
+        type: "number",
+        unit: "people",
+        min: 1,
+        max: 1000,
+        step: 1,
+        defaultValue: 4,
+      },
+      {
+        name: "dailyUsage",
+        label: "Water used per person per day",
+        placeholder: "Enter litres",
+        type: "number",
+        unit: "litres",
+        min: 0.1,
+        defaultValue: 4,
+      },
+      {
+        name: "jarSize",
+        label: "Jar size",
+        placeholder: "Enter jar size",
+        type: "number",
+        unit: "litres",
+        min: 0.1,
+        defaultValue: 20,
+      },
+      {
+        name: "pricePerJar",
+        label: "Price per jar",
+        placeholder: "Enter price",
+        type: "number",
+        unit: "₹",
+        min: 0,
+        defaultValue: 40,
+      },
+    ],
+  },
+  {
+    id: "tds-calculator",
+    number: "02",
+    title: "TDS Calculator / Checker",
+    shortTitle: "TDS Calculator",
+    description:
+      "Record your Total Dissolved Solids (TDS) reading and understand what the number means.",
+    category: "Water Quality",
+    icon: "flask",
+    seoTitle: "Water TDS Calculator & Checker | Amrit Jal",
+    seoDescription:
+      "Check your water TDS reading with the free Amrit Jal TDS checker and understand the result.",
+    fields: [
+      {
+        name: "tds",
+        label: "Water TDS reading",
+        placeholder: "Enter TDS value",
+        type: "number",
+        unit: "PPM",
+        min: 0,
+        defaultValue: 150,
+      },
+    ],
+  },
+  {
+    id: "jar-delivery-profit",
+    number: "03",
+    title: "Jar Delivery Profit Calculator",
+    shortTitle: "Jar Delivery Profit",
+    description:
+      "Estimate profit from water jar deliveries using sales, jar cost, delivery, staff and other expenses.",
+    category: "Business",
+    icon: "truck",
+    seoTitle: "Water Jar Delivery Profit Calculator | Amrit Jal",
+    seoDescription:
+      "Calculate water jar delivery revenue, expenses and estimated monthly profit using this free business calculator.",
+    fields: [
+      {
+        name: "jarsPerDay",
+        label: "Jars delivered per day",
+        placeholder: "Enter jar quantity",
+        type: "number",
+        unit: "jars",
+        min: 1,
+        defaultValue: 100,
+      },
+      {
+        name: "sellingPrice",
+        label: "Selling price per jar",
+        placeholder: "Enter selling price",
+        type: "number",
+        unit: "₹",
+        min: 0,
+        defaultValue: 30,
+      },
+      {
+        name: "costPerJar",
+        label: "Cost per jar",
+        placeholder: "Enter cost",
+        type: "number",
+        unit: "₹",
+        min: 0,
+        defaultValue: 12,
+      },
+      {
+        name: "deliveryCost",
+        label: "Daily delivery and operating cost",
+        placeholder: "Enter daily cost",
+        type: "number",
+        unit: "₹ / day",
+        min: 0,
+        defaultValue: 300,
+      },
+      {
+        name: "workingDays",
+        label: "Working days per month",
+        placeholder: "Enter days",
+        type: "number",
+        unit: "days",
+        min: 1,
+        max: 31,
+        defaultValue: 26,
+      },
+    ],
+  },
+  {
+    id: "water-ph-calculator",
+    number: "04",
+    title: "Water pH Calculator / Checker",
+    shortTitle: "Water pH Checker",
+    description:
+      "Enter a pH reading and see where it falls on the 0–14 pH scale.",
+    category: "Water Quality",
+    icon: "ph",
+    seoTitle: "Water pH Calculator & Checker | Amrit Jal",
+    seoDescription:
+      "Check your water pH reading and understand its position on the acidic, neutral and alkaline scale.",
+    fields: [
+      {
+        name: "ph",
+        label: "Water pH reading",
+        placeholder: "Enter pH value",
+        type: "number",
+        unit: "pH",
+        min: 0,
+        max: 14,
+        step: 0.1,
+        defaultValue: 7,
+      },
+    ],
+  },
+];
+
+export const getToolById = (id) =>
+  tools.find((tool) => tool.id === id);
