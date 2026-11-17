@@ -11,7 +11,6 @@ import {
   Clock,
   CreditCard,
   Droplets,
-  FileText,
   HandCoins,
   Package,
   RefreshCw,
@@ -93,15 +92,15 @@ function Section({
 }) {
   return (
     <section
-      className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 ${className}`}
+      className={`min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-6 ${className}`}
     >
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2 sm:mb-5 sm:gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-sm font-semibold text-slate-900 sm:text-base">
             {title}
           </h2>
           {subtitle && (
-            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">{subtitle}</p>
           )}
         </div>
         {action}
@@ -116,19 +115,19 @@ function SummaryCard({
   value,
   subtitle,
   icon,
-  color = "bg-cyan-50 text-cyan-700",
+  color = "bg-teal-50 text-teal-700",
   onClick,
 }) {
   const content = (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-slate-500">{title}</p>
-        <p className="mt-3 break-words text-2xl font-bold tracking-tight text-slate-950">
+        <p className="text-xs font-medium text-slate-500 sm:text-sm">{title}</p>
+        <p className="mt-1.5 break-words text-lg font-bold tracking-tight text-slate-950 sm:mt-3 sm:text-2xl">
           {value}
         </p>
-        <p className="mt-2 text-xs text-slate-400">{subtitle}</p>
+        <p className="mt-1 hidden text-xs text-slate-400 sm:block">{subtitle}</p>
       </div>
-      <div className={`shrink-0 rounded-xl p-3 ${color}`}>
+      <div className={`shrink-0 rounded-lg p-2.5 sm:rounded-xl sm:p-3 ${color}`}>
         {icon}
       </div>
     </div>
@@ -136,7 +135,7 @@ function SummaryCard({
 
   if (!onClick) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5">
         {content}
       </div>
     );
@@ -146,7 +145,7 @@ function SummaryCard({
     <button
       type="button"
       onClick={onClick}
-      className="group w-full rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group w-full rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 sm:rounded-2xl sm:p-5"
     >
       {content}
     </button>
@@ -158,9 +157,9 @@ function TabButton({ active, icon, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition ${
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition sm:rounded-xl sm:px-5 sm:py-3 ${
         active
-          ? "bg-slate-950 text-white shadow-sm"
+          ? "bg-teal-800 text-white shadow-sm"
           : "text-slate-600 hover:bg-slate-100"
       }`}
     >
@@ -184,68 +183,123 @@ function InfoPlaceholder({ icon, title, description }) {
   );
 }
 
-function DataTable({ columns, rows, loading, emptyMessage }) {
-  return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200">
-      <table className="w-full min-w-[600px] text-left text-sm">
-        <thead className="bg-slate-50">
-          <tr>
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                className={`whitespace-nowrap px-4 py-3 font-medium text-slate-600 ${
-                  column.align === "right" ? "text-right" : ""
-                }`}
-              >
-                {column.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
+function DataTable({ columns, rows, loading, emptyMessage, mobileColumns, compactMobile = false }) {
+  const mobileDisplayColumns = mobileColumns || columns;
+  const getCellValue = (row, column) =>
+    column.render ? column.render(row) : row[column.key] ?? "—";
 
-        <tbody className="divide-y divide-slate-100">
-          {loading ? (
-            Array.from({ length: 3 }).map((_, index) => (
-              <tr key={index}>
-                {columns.map((column) => (
-                  <td key={column.key} className="px-4 py-4">
-                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : rows.length > 0 ? (
-            rows.map((row, index) => (
-              <tr
-                key={row.id || index}
-                className="transition-colors hover:bg-slate-50"
-              >
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={`px-4 py-3.5 text-slate-700 ${
-                      column.align === "right" ? "text-right" : ""
+  return (
+    <div className="space-y-3">
+      {/* Mobile: concise records without horizontal scrolling */}
+      <div className={`sm:hidden ${compactMobile ? "space-y-1.5" : "space-y-3"}`}>
+        {loading ? (
+          Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="animate-pulse rounded-xl border border-slate-200 p-3"
+            >
+              <div className="h-4 w-32 rounded bg-slate-200" />
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="h-3 rounded bg-slate-100" />
+                <div className="h-3 rounded bg-slate-100" />
+              </div>
+            </div>
+          ))
+        ) : rows.length > 0 ? (
+          rows.map((row, index) => (
+            <article
+              key={row.id || index}
+              className={`rounded-xl border border-slate-200 bg-white ${compactMobile ? "p-2.5" : "p-3 sm:p-4"}`}
+            >
+              {mobileDisplayColumns.map((column, columnIndex) => (
+                <div
+                  key={column.key}
+                  className={`flex items-start justify-between gap-2 ${compactMobile ? "py-1" : "py-1.5"} ${
+                    columnIndex === 0
+                      ? "border-b border-slate-100 pb-2"
+                      : ""
+                  }`}
+                >
+                  <span className="min-w-0 text-[11px] font-medium text-slate-500 sm:text-xs">
+                    {column.label}
+                  </span>
+                  <span
+                    className={`min-w-0 max-w-[62%] break-words text-right text-xs text-slate-800 sm:text-sm ${
+                      columnIndex === 0 ? "font-semibold" : "font-medium"
                     }`}
                   >
-                    {column.render
-                      ? column.render(row)
-                      : row[column.key] ?? "—"}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
+                    {getCellValue(row, column)}
+                  </span>
+                </div>
+              ))}
+            </article>
+          ))
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+            {emptyMessage}
+          </div>
+        )}
+      </div>
+
+      {/* Tablet and desktop: full data table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-slate-200 sm:block">
+        <table className="w-full min-w-[600px] text-left text-sm">
+          <thead className="bg-slate-50">
             <tr>
-              <td
-                colSpan={columns.length}
-                className="px-4 py-9 text-center text-sm text-slate-500"
-              >
-                {emptyMessage}
-              </td>
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className={`whitespace-nowrap px-4 py-3 font-medium text-slate-600 ${
+                    column.align === "right" ? "text-right" : ""
+                  }`}
+                >
+                  {column.label}
+                </th>
+              ))}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <tr key={index}>
+                  {columns.map((column) => (
+                    <td key={column.key} className="px-4 py-4">
+                      <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : rows.length > 0 ? (
+              rows.map((row, index) => (
+                <tr
+                  key={row.id || index}
+                  className="transition-colors hover:bg-slate-50"
+                >
+                  {columns.map((column) => (
+                    <td
+                      key={column.key}
+                      className={`px-4 py-3.5 text-slate-700 ${
+                        column.align === "right" ? "text-right" : ""
+                      }`}
+                    >
+                      {getCellValue(row, column)}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-9 text-center text-sm text-slate-500"
+                >
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -261,7 +315,7 @@ function MetricCard({ label, value, icon, description, tone = "slate" }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
+    <div className="rounded-xl border border-slate-200 p-3.5 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-slate-500">{label}</p>
         <div className={`rounded-lg p-2 ${tones[tone]}`}>
@@ -475,29 +529,29 @@ export default function DashboardPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#edf2f7] px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1600px] space-y-5">
+    <main className="min-h-screen w-full overflow-x-clip bg-[#f4f7fa] px-2.5 py-3 text-slate-900 sm:px-6 sm:py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-3 sm:space-y-5">
 
         {/* HEADER */}
 
         <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <p className="text-sm font-semibold text-cyan-800">
+            <p className="text-sm font-semibold text-teal-800">
               AMRIT JAL
             </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+            <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-3xl">
               Business Dashboard
             </h1>
-            <p className="mt-2 text-sm text-slate-500 sm:text-base">
+            <p className="mt-1.5 text-xs leading-5 text-slate-500 sm:mt-2 sm:text-base">
               {summary?.business?.name
                 ? `Welcome to ${summary.business.name}.`
                 : "Your business overview at a glance."}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm">
-              <CalendarDays size={18} className="text-cyan-700" />
+          <div className="flex w-full flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center sm:w-auto sm:gap-3">
+            <div className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 shadow-sm sm:px-4 sm:text-sm">
+              <CalendarDays size={18} className="text-teal-700" />
               {formatDate(summary?.today)}
             </div>
 
@@ -505,7 +559,7 @@ export default function DashboardPage() {
               type="button"
               onClick={loadDashboard}
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-900 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 disabled:opacity-60 sm:px-4 sm:py-3"
             >
               <RefreshCw
                 size={16}
@@ -518,24 +572,24 @@ export default function DashboardPage() {
 
         {/* STATUS BANNER */}
 
-        <div className="flex flex-col gap-3 rounded-xl border border-cyan-200 bg-cyan-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 rounded-xl border border-teal-200 bg-teal-50 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-4">
           <div className="flex items-start gap-3">
             <ShieldCheck
               size={21}
-              className="mt-0.5 shrink-0 text-cyan-800"
+              className="mt-0.5 shrink-0 text-teal-800"
             />
             <div>
               <p className="font-semibold text-slate-800">
                 Business overview
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">
                 Monitor daily operations, financial performance and account
                 information from one place.
               </p>
             </div>
           </div>
 
-          <span className="inline-flex items-center gap-2 text-xs font-medium text-cyan-800">
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-teal-800">
             <Activity size={15} />
             Live database records
           </span>
@@ -543,7 +597,7 @@ export default function DashboardPage() {
 
         {/* TABS */}
 
-        <div className="flex w-fit max-w-full flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-fit">
           {tabs.map((tab) => (
             <TabButton
               key={tab.id}
@@ -586,7 +640,7 @@ export default function DashboardPage() {
 
         {activeTab === "today" && (
           <>
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
               <SummaryCard
                 title="Today's Payment"
                 value={currency(summary?.todayCollection)}
@@ -775,7 +829,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/deliveries")}
-                  className="text-sm font-semibold text-cyan-800 hover:text-cyan-950"
+                  className="text-sm font-semibold text-teal-800 hover:text-teal-950"
                 >
                   View All
                 </button>
@@ -833,7 +887,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/products")}
-                  className="text-sm font-semibold text-cyan-800 hover:text-cyan-950"
+                  className="text-sm font-semibold text-teal-800 hover:text-teal-950"
                 >
                   Manage Products
                 </button>
@@ -869,7 +923,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => navigate("/deliveries")}
-                    className="text-sm font-semibold text-cyan-800"
+                    className="text-sm font-semibold text-teal-800"
                   >
                     View All
                   </button>
@@ -883,7 +937,7 @@ export default function DashboardPage() {
                         className="flex items-center justify-between gap-3 py-4"
                       >
                         <div className="flex min-w-0 items-center gap-3">
-                          <div className="rounded-xl bg-cyan-50 p-3 text-cyan-800">
+                          <div className="rounded-xl bg-teal-50 p-3 text-teal-800">
                             <Droplets size={20} />
                           </div>
                           <div className="min-w-0">
@@ -918,7 +972,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => navigate("/payments")}
-                    className="text-sm font-semibold text-cyan-800"
+                    className="text-sm font-semibold text-teal-800"
                   >
                     View All
                   </button>
@@ -975,7 +1029,7 @@ export default function DashboardPage() {
 
             {/* OVERVIEW METRICS */}
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
               <MetricCard
                 label="Earning"
                 value={currency(financeTotals.earning)}
@@ -1070,7 +1124,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => navigate("/expenses")}
-                    className="text-sm font-semibold text-cyan-800"
+                    className="text-sm font-semibold text-teal-800"
                   >
                     View Expenses
                   </button>
@@ -1088,7 +1142,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => navigate("/products")}
-                    className="text-sm font-semibold text-cyan-800"
+                    className="text-sm font-semibold text-teal-800"
                   >
                     View Products
                   </button>
@@ -1102,7 +1156,7 @@ export default function DashboardPage() {
                         className="flex items-center justify-between gap-3"
                       >
                         <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-sm font-bold text-cyan-800">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-sm font-bold text-teal-800">
                             {index + 1}
                           </div>
                           <div className="min-w-0">
@@ -1140,7 +1194,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/payments")}
-                  className="text-sm font-semibold text-cyan-800"
+                  className="text-sm font-semibold text-teal-800"
                 >
                   View All
                 </button>
@@ -1182,13 +1236,13 @@ export default function DashboardPage() {
 
         {activeTab === "account" && (
           <>
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
               <SummaryCard
                 title="Active Customers"
                 value={summary?.activeCustomers ?? 0}
                 subtitle="Active customer accounts"
                 icon={<Users size={24} />}
-                color="bg-cyan-50 text-cyan-700"
+                color="bg-teal-50 text-teal-700"
                 onClick={() => navigate("/customers")}
               />
 
@@ -1215,75 +1269,51 @@ export default function DashboardPage() {
 
             <Section
               title="Subscription & Plans"
-              subtitle="Amrit Jal application subscription information"
+              subtitle="Your Amrit Jal app and web subscription overview"
             >
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-cyan-50 p-3 text-cyan-700">
-                        <Smartphone size={22} />
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4">
+                <div className="min-w-0 rounded-xl border border-teal-200 bg-teal-50/40 p-3 sm:rounded-2xl sm:p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700 sm:h-11 sm:w-11 sm:rounded-xl">
+                        <Smartphone size={19} />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900">
-                          App Plan
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          Mobile application plan
-                        </p>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 sm:text-base">App Plan</h3>
+                        <p className="text-[11px] text-slate-500 sm:text-xs">Mobile application</p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800 sm:px-3 sm:text-xs">
                       Not configured
                     </span>
                   </div>
-
-                  <div className="mt-6 border-t border-slate-100 pt-4">
-                    <p className="text-sm text-slate-500">
-                      Subscription validity
-                    </p>
-                    <p className="mt-2 font-semibold text-slate-800">
-                      Not available yet
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">
-                      App subscription management will be activated when the
-                      SaaS subscription backend is implemented.
-                    </p>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-teal-100 pt-2.5 sm:mt-5 sm:pt-4">
+                    <span className="text-[11px] text-slate-500 sm:text-sm">Subscription validity</span>
+                    <span className="text-right text-xs font-semibold text-slate-700 sm:text-sm">Not available yet</span>
                   </div>
+                  <p className="mt-1.5 text-[10px] leading-4 text-slate-500 sm:text-xs sm:leading-5">App plan activation and renewal details will appear when subscription records are configured.</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl bg-blue-50 p-3 text-blue-700">
-                        <Globe size={22} />
+                <div className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/40 p-3 sm:rounded-2xl sm:p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 sm:h-11 sm:w-11 sm:rounded-xl">
+                        <Globe size={19} />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900">
-                          Web Plan
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          Web application plan
-                        </p>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 sm:text-base">Web Plan</h3>
+                        <p className="text-[11px] text-slate-500 sm:text-xs">Web application</p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800 sm:px-3 sm:text-xs">
                       Not configured
                     </span>
                   </div>
-
-                  <div className="mt-6 border-t border-slate-100 pt-4">
-                    <p className="text-sm text-slate-500">
-                      Subscription validity
-                    </p>
-                    <p className="mt-2 font-semibold text-slate-800">
-                      Not available yet
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">
-                      Web plan activation, renewal and expiry tracking will
-                      require subscription records.
-                    </p>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-blue-100 pt-2.5 sm:mt-5 sm:pt-4">
+                    <span className="text-[11px] text-slate-500 sm:text-sm">Subscription validity</span>
+                    <span className="text-right text-xs font-semibold text-slate-700 sm:text-sm">Not available yet</span>
                   </div>
+                  <p className="mt-1.5 text-[10px] leading-4 text-slate-500 sm:text-xs sm:leading-5">Web plan activation, renewal and expiry details will appear when subscription records are configured.</p>
                 </div>
               </div>
             </Section>
@@ -1297,7 +1327,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/products")}
-                  className="text-sm font-semibold text-cyan-800"
+                  className="text-sm font-semibold text-teal-800"
                 >
                   Manage Products
                 </button>
@@ -1307,6 +1337,23 @@ export default function DashboardPage() {
                 loading={loading}
                 rows={products}
                 emptyMessage="No products found."
+                compactMobile
+                mobileColumns={[
+                  { key: "name", label: "Product" },
+                  {
+                    key: "salePrice",
+                    label: "Price",
+                    render: (row) => currency(row.salePrice),
+                  },
+                  {
+                    key: "stockQuantity",
+                    label: "Stock",
+                    render: (row) =>
+                      row.stockQuantity == null
+                        ? "Not tracked"
+                        : formatNumber(row.stockQuantity),
+                  },
+                ]}
                 columns={[
                   {
                     key: "name",
@@ -1342,14 +1389,14 @@ export default function DashboardPage() {
             {/* ACCOUNT MANAGEMENT */}
 
             <Section title="Account Management">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => navigate("/customers")}
                   className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50"
                 >
                   <span className="flex items-center gap-3">
-                    <Users size={20} className="text-cyan-800" />
+                    <Users size={20} className="text-teal-800" />
                     <span>
                       <span className="block font-semibold">
                         Customers
@@ -1368,7 +1415,7 @@ export default function DashboardPage() {
                   className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50"
                 >
                   <span className="flex items-center gap-3">
-                    <Package size={20} className="text-cyan-800" />
+                    <Package size={20} className="text-teal-800" />
                     <span>
                       <span className="block font-semibold">
                         Products
@@ -1387,7 +1434,7 @@ export default function DashboardPage() {
                   className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50"
                 >
                   <span className="flex items-center gap-3">
-                    <Users size={20} className="text-cyan-800" />
+                    <Users size={20} className="text-teal-800" />
                     <span>
                       <span className="block font-semibold">
                         Employees
@@ -1406,7 +1453,7 @@ export default function DashboardPage() {
                   className="flex items-center justify-between rounded-xl border border-slate-200 p-4 text-left hover:bg-slate-50"
                 >
                   <span className="flex items-center gap-3">
-                    <ShieldCheck size={20} className="text-cyan-800" />
+                    <ShieldCheck size={20} className="text-teal-800" />
                     <span>
                       <span className="block font-semibold">
                         Business Settings

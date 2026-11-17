@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Users,
@@ -47,27 +47,27 @@ function SummaryCard({ title, value, subtitle, icon: Icon, tone }) {
   };
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-500">
+          <p className="text-xs font-medium text-slate-500 sm:text-sm">
             {title}
           </p>
 
-          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+          <p className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 sm:mt-2 sm:text-2xl">
             {value}
           </p>
 
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 hidden text-xs text-slate-400 sm:block">
             {subtitle}
           </p>
         </div>
 
         <div
-          className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tones[tone] || tones.teal
+          className={`flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl ${tones[tone] || tones.teal
             }`}
         >
-          <Icon size={20} />
+          <Icon size={18} className="sm:size-5" />
         </div>
       </div>
     </article>
@@ -165,8 +165,53 @@ function EmptyState({ archived, hasSearch, onReset }) {
 
 function CustomerAvatar({ name }) {
   return (
-    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-sm font-bold text-teal-800">
+    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-sm font-bold text-teal-800">
       {String(name || "C").trim().charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function SwipeToDelete({ children, onDelete, disabled = false }) {
+  const startX = useRef(0);
+  const [offset, setOffset] = useState(0);
+  const revealWidth = 92;
+
+  function handleTouchStart(event) {
+    startX.current = event.touches[0]?.clientX || 0;
+  }
+
+  function handleTouchEnd(event) {
+    const endX = event.changedTouches[0]?.clientX || startX.current;
+    const delta = endX - startX.current;
+
+    if (delta < -35) setOffset(-revealWidth);
+    else if (delta > 35) setOffset(0);
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          setOffset(0);
+          onDelete();
+        }}
+        className="absolute inset-y-0 right-0 flex w-[92px] flex-col items-center justify-center gap-2 bg-rose-600 text-white transition hover:bg-rose-700 disabled:opacity-60"
+        aria-label="Delete customer"
+      >
+        <Trash2 size={21} />
+        <span className="text-xs font-semibold">Delete</span>
+      </button>
+
+      <div
+        className="relative bg-white transition-transform duration-200 ease-out"
+        style={{ transform: `translateX(${offset}px)` }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -407,7 +452,7 @@ export default function CustomersPage() {
 
     try {
       await action(customer.id);
-      await refresh();
+      await loadCustomerFinance();
 
       setActionSuccess(successMessage);
     } catch (err) {
@@ -518,7 +563,7 @@ export default function CustomersPage() {
 
   return (
     <main className="min-h-full w-full bg-slate-50 text-slate-800">
-      <div className="mx-auto w-full max-w-[1600px] space-y-5 px-3 py-4 sm:px-5 lg:px-7">
+      <div className="mx-auto w-full max-w-[1600px] space-y-3 px-2.5 py-3 sm:space-y-5 sm:px-5 sm:py-4 lg:px-7">
 
 
         {/* FEEDBACK */}
@@ -565,7 +610,7 @@ export default function CustomersPage() {
 
         {/* SUMMARY CARDS */}
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
           <SummaryCard
             title="All Customers"
             value={customers.length}
@@ -601,25 +646,28 @@ export default function CustomersPage() {
           />
         </section>
 
-        <CustomerSubscriptionUsage
-          usage={subscriptionUsage}
-          loading={subscriptionLoading}
-          error={subscriptionError}
-          onRetry={refreshSubscription}
-        />
+        <div className="-mt-1 min-w-0">
+          <CustomerSubscriptionUsage
+            usage={subscriptionUsage}
+            loading={subscriptionLoading}
+            error={subscriptionError}
+            onRetry={refreshSubscription}
+          />
+        </div>
 
         {/* CUSTOMER LIST */}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
 
           {/* TOOLBAR */}
 
-          <div className="border-b border-slate-100 p-4 sm:p-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="relative min-w-0 flex-1">
+          <div className="border-b border-slate-100 p-3 sm:p-5">
+            <div className="flex flex-col gap-2.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="relative min-w-0 flex-1">
                 <Search
                   size={18}
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 sm:left-4"
                 />
 
                 <input
@@ -628,22 +676,21 @@ export default function CustomersPage() {
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by name, mobile, area or customer ID..."
                   aria-label="Search customers"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-50"
+                  className="h-10 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-2 text-xs outline-none transition placeholder:text-slate-400 focus:border-teal-400 focus:bg-white focus:ring-4 focus:ring-teal-50 sm:h-11 sm:pl-11 sm:pr-4 sm:text-sm"
                 />
-              </div>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowFilters((value) => !value)}
                   aria-expanded={showFilters}
-                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition ${showFilters
+                  className={`inline-flex h-10 shrink-0 items-center justify-center gap-1 rounded-xl border px-2.5 text-[11px] font-semibold transition sm:h-11 sm:gap-1.5 sm:px-4 sm:text-sm ${showFilters
                     ? "border-teal-200 bg-teal-50 text-teal-800"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                     }`}
                 >
-                  <Filter size={16} />
-                  Filters
+                  <Filter size={15} />
+                  <span>Filters</span>
 
                   <ChevronDown
                     size={15}
@@ -652,20 +699,23 @@ export default function CustomersPage() {
                   />
 
                 </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <Link
                   to="/customers/import"
-                  className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50"
+                  className="inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl border border-teal-200 bg-white px-2 text-[11px] font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50 sm:h-11 sm:gap-2 sm:px-4 sm:text-sm"
                 >
-                  <Upload size={17} />
-                  Import Customers
+                  <Upload size={15} className="shrink-0 sm:size-[17px]" />
+                  <span className="truncate">Import Customers</span>
                 </Link>
 
                 <Link
                   to="/customers/new"
-                  className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800"
+                  className="inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl bg-teal-700 px-2 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-800 sm:h-11 sm:gap-2 sm:px-4 sm:text-sm"
                 >
-                  <UserRoundPlus size={17} />
-                  Add Customer
+                  <UserRoundPlus size={15} className="shrink-0 sm:size-[17px]" />
+                  <span className="truncate">Add Customer</span>
                 </Link>
 
                 {(search || status !== "all") && (
@@ -742,173 +792,104 @@ export default function CustomersPage() {
             />
           ) : (
             <>
-              {/* MOBILE LAYOUT */}
+              {/* MOBILE LAYOUT — reference-style horizontal customer cards */}
 
-              <div className="divide-y divide-slate-100 md:hidden">
+              <div className="space-y-3 bg-slate-100 p-3 md:hidden">
                 {filteredCustomers.map((customer) => {
                   const finance = customerFinance[customer.id] || {};
-
-                  const due =
+                  const due = Math.max(
+                    0,
                     Number(customer.openingBalance || 0) +
-                    Number(finance.delivered || 0) -
-                    Number(finance.paid || 0);
-
+                      Number(finance.delivered || 0) -
+                      Number(finance.paid || 0)
+                  );
                   const jarBalance = Math.max(
                     0,
                     Number(customerJarBalances[customer.id] || 0)
                   );
 
                   return (
-                    <article
+                    <SwipeToDelete
                       key={customer.id}
-                      className="p-4 transition hover:bg-slate-50/70"
+                      disabled={actionLoading === customer.id}
+                      onDelete={() => setConfirmDelete(customer)}
                     >
-                      <div className="flex items-start gap-3">
-                        <CustomerAvatar name={customer.name} />
+                      <article className="bg-white px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            to={`/customers/${customer.id}`}
+                            aria-label={`View ${customer.name}`}
+                            className="flex size-[68px] shrink-0 items-center justify-center rounded-full bg-cyan-100 text-2xl font-bold text-cyan-800 ring-4 ring-cyan-50"
+                          >
+                            {String(customer.name || "C").trim().charAt(0).toUpperCase()}
+                          </Link>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="break-words font-bold text-slate-900">
-                              {customer.name}
-                            </h3>
-
-                            <StatusBadge
-                              archived={customer.archived}
-                            />
-                          </div>
-
-                          {customer.code && (
-                            <p className="mt-1 text-xs text-slate-400">
-                              ID: {customer.code}
-                            </p>
-                          )}
-
-                          {customer.phone && (
-                            <p className="mt-2 flex items-center gap-2 text-sm text-slate-600">
-                              <Phone
-                                size={14}
-                                className="shrink-0 text-slate-400"
-                              />
-                              {customer.phone}
-                            </p>
-                          )}
-
-                          {(customer.area || customer.address) && (
-                            <p className="mt-1 flex items-start gap-2 text-sm text-slate-500">
-                              <MapPin
-                                size={14}
-                                className="mt-0.5 shrink-0 text-slate-400"
-                              />
-
-                              <span className="break-words">
-                                {[customer.area, customer.address]
-                                  .filter(Boolean)
-                                  .join(", ")}
-                              </span>
-                            </p>
-                          )}
-
-                          <div className="mt-4 grid grid-cols-2 gap-2">
-                            <div className="rounded-xl bg-slate-50 p-3">
-                              <p className="text-xs text-slate-400">
-                                Due Amount
-                              </p>
-
-                              <p
-                                className={`mt-1 text-sm font-bold ${due > 0
-                                  ? "text-rose-600"
-                                  : "text-emerald-700"
-                                  }`}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                to={`/customers/${customer.id}`}
+                                className="break-words text-[17px] font-medium leading-6 text-slate-900"
                               >
-                                {financeLoading
-                                  ? "Loading..."
-                                  : currency(due)}
-                              </p>
+                                {customer.name}
+                              </Link>
+                              <StatusBadge archived={customer.archived} />
                             </div>
 
-                            <div className="rounded-xl bg-slate-50 p-3">
-                              <p className="text-xs text-slate-400">
-                                Balance Jars
+                            {customer.phone && (
+                              <p className="mt-1.5 text-sm text-slate-500">
+                                {customer.phone}
                               </p>
+                            )}
 
-                              <p className="mt-1 text-sm font-bold text-slate-900">
-                                {financeLoading ? "..." : jarBalance}
-                              </p>
-                            </div>
+                            <p className="mt-1 text-sm text-slate-400">
+                              {customer.groupName || "Customer"}
+                            </p>
                           </div>
 
-                          <p className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-teal-800">
-                            <Droplets size={15} />
-                            {currency(customer.jarRate)} / jar
-                          </p>
-
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <div className="flex shrink-0 flex-col items-center gap-3">
+                            {customer.phone ? (
+                              <a
+                                href={`tel:${customer.phone}`}
+                                aria-label={`Call ${customer.name}`}
+                                className="text-sky-600"
+                              >
+                                <Phone size={23} fill="currentColor" />
+                              </a>
+                            ) : null}
                             <Link
                               to={`/customers/${customer.id}`}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-100"
+                              aria-label={`Open account for ${customer.name}`}
+                              className="text-sky-600"
                             >
-                              <Eye size={14} />
-                              View
+                              <Wallet size={25} />
                             </Link>
-
-                            <Link
-                              to={`/customers/${customer.id}/edit`}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                            >
-                              <Pencil size={14} />
-                              Edit
-                            </Link>
-
-                            {customer.archived ? (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={actionLoading === customer.id}
-                                  onClick={() =>
-                                    void handleRestore(customer)
-                                  }
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
-                                >
-                                  <ArchiveRestore size={14} />
-                                  Restore
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={actionLoading === customer.id}
-                                  onClick={() =>
-                                    setConfirmDelete(customer)
-                                  }
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-                                >
-                                  <Trash2 size={14} />
-                                  Delete
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={actionLoading === customer.id}
-                                onClick={() =>
-                                  void handleArchive(customer)
-                                }
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                              >
-                                <Archive size={14} />
-                                Archive
-                              </button>
-                            )}
                           </div>
                         </div>
 
-                        {actionLoading === customer.id && (
-                          <LoaderCircle
-                            size={17}
-                            className="shrink-0 animate-spin text-teal-700"
-                          />
-                        )}
-                      </div>
-                    </article>
+                        <div className="my-4 border-t border-slate-300" />
+
+                        <div className="grid grid-cols-3 divide-x divide-slate-200 text-center">
+                          <div className="px-1">
+                            <p className="text-[13px] font-semibold text-sky-600">
+                              {financeLoading ? "..." : jarBalance}
+                            </p>
+                            <p className="mt-1 text-xs leading-4 text-slate-400">Balance Jar</p>
+                          </div>
+                          <div className="px-1">
+                            <p className={`text-[13px] font-bold ${due > 0 ? "text-rose-600" : "text-slate-900"}`}>
+                              {financeLoading ? "Loading..." : currency(due)}
+                            </p>
+                            <p className="mt-1 text-xs leading-4 text-slate-400">Total Due</p>
+                          </div>
+                          <div className="px-1">
+                            <p className="text-[13px] font-semibold text-teal-700">
+                              {currency(customer.jarRate)}
+                            </p>
+                            <p className="mt-1 text-xs leading-4 text-slate-400">Per Jar</p>
+                          </div>
+                        </div>
+                      </article>
+                    </SwipeToDelete>
                   );
                 })}
               </div>
@@ -949,10 +930,12 @@ export default function CustomersPage() {
                     {filteredCustomers.map((customer) => {
                       const finance = customerFinance[customer.id] || {};
 
-                      const due =
+                      const due = Math.max(
+                        0,
                         Number(customer.openingBalance || 0) +
-                        Number(finance.delivered || 0) -
-                        Number(finance.paid || 0);
+                          Number(finance.delivered || 0) -
+                          Number(finance.paid || 0)
+                      );
 
                       const jarBalance = Math.max(
                         0,
