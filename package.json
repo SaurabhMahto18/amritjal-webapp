@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "db:notes": "echo \"See docs/SUPABASE_SETUP.md for migration instructions\""
-  },
+  "dev": "vite",
+  "build": "npm run generate:seo && vite build",
+  "preview": "vite preview",
+  "generate:seo": "node scripts/generate-seo-files.mjs"
+},
   "dependencies": {
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",
     "@capacitor-community/bluetooth-le": "^8.3.0",
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.6.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

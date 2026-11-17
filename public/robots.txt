@@ -1,2 +1,40 @@
 User-agent: *
 Allow: /
+
+# Authentication
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+
+# Platform administration
+Disallow: /admin
+
+# Protected business application
+Disallow: /dashboard
+Disallow: /customers
+Disallow: /deliveries
+Disallow: /groups
+Disallow: /products
+Disallow: /jars
+Disallow: /imports
+Disallow: /load-unload
+Disallow: /routes
+Disallow: /events
+Disallow: /payments
+Disallow: /employee-payments
+Disallow: /ledger
+Disallow: /invoices
+Disallow: /expenses
+Disallow: /wallet-transactions
+Disallow: /monthly-card
+Disallow: /employees
+Disallow: /leaves
+Disallow: /reports
+Disallow: /sms
+Disallow: /whatsapp
+Disallow: /subscription
+
+# Unpublished placeholder content
+Disallow: /blog
+
+Sitemap: https://amritjalapp.vercel.app/sitemap.xml
