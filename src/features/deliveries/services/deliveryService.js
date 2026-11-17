@@ -213,16 +213,13 @@ const deliveryService = {
 
     if (deliveryDate) {
       const rangeStart = periodStart || deliveryDate;
+      
       const rangeEnd = deliveryDate;
 
-      // Plan must have started on or before the selected period ends.
-      // NULL effective_from is treated as an open start date.
       query = query.or(
         `effective_from.is.null,effective_from.lte.${rangeEnd}`
       );
 
-      // Plan must not have ended before the selected period starts.
-      // NULL effective_to means the plan is still active.
       query = query.or(
         `effective_to.is.null,effective_to.gte.${rangeStart}`
       );
@@ -250,41 +247,41 @@ const deliveryService = {
   },
 
 
-  
 
-async getCustomerRatePlansForCustomers(
-  customerIds,
-  deliveryDate,
-  periodStart = null
-) {
-  const uniqueCustomerIds = [
-    ...new Set((customerIds || []).filter(Boolean)),
-  ];
 
-  if (!uniqueCustomerIds.length) return {};
-
-  if (
-    !deliveryDate ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)
+  async getCustomerRatePlansForCustomers(
+    customerIds,
+    deliveryDate,
+    periodStart = null
   ) {
-    throw new Error("Please provide a valid rate-plan date.");
-  }
+    const uniqueCustomerIds = [
+      ...new Set((customerIds || []).filter(Boolean)),
+    ];
 
-  if (
-    periodStart &&
-    !/^\d{4}-\d{2}-\d{2}$/.test(periodStart)
-  ) {
-    throw new Error("Please provide a valid period start date.");
-  }
+    if (!uniqueCustomerIds.length) return {};
 
-  const businessId = await getBusinessId();
+    if (
+      !deliveryDate ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)
+    ) {
+      throw new Error("Please provide a valid rate-plan date.");
+    }
 
-  const rangeStart = periodStart || deliveryDate;
-  const rangeEnd = deliveryDate;
+    if (
+      periodStart &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(periodStart)
+    ) {
+      throw new Error("Please provide a valid period start date.");
+    }
 
-  const { data, error } = await supabase
-    .from(TABLES.ratePlans)
-    .select(`
+    const businessId = await getBusinessId();
+
+    const rangeStart = periodStart || deliveryDate;
+    const rangeEnd = deliveryDate;
+
+    const { data, error } = await supabase
+      .from(TABLES.ratePlans)
+      .select(`
       id,
       customer_id,
       product_id,
@@ -293,43 +290,43 @@ async getCustomerRatePlansForCustomers(
       effective_from,
       effective_to
     `)
-    .eq("business_id", businessId)
-    .in("customer_id", uniqueCustomerIds)
-    .or(
-      `effective_from.is.null,effective_from.lte.${rangeEnd}`
-    )
-    .or(
-      `effective_to.is.null,effective_to.gte.${rangeStart}`
-    )
-    .order("effective_from", {
-      ascending: false,
-      nullsFirst: false,
+      .eq("business_id", businessId)
+      .in("customer_id", uniqueCustomerIds)
+      .or(
+        `effective_from.is.null,effective_from.lte.${rangeEnd}`
+      )
+      .or(
+        `effective_to.is.null,effective_to.gte.${rangeStart}`
+      )
+      .order("effective_from", {
+        ascending: false,
+        nullsFirst: false,
+      });
+
+    if (error) throw error;
+
+    const result = {};
+
+    uniqueCustomerIds.forEach((customerId) => {
+      result[customerId] = [];
     });
 
-  if (error) throw error;
+    const latestPlanByCustomerProduct = new Map();
 
-  const result = {};
+    for (const plan of data || []) {
+      const key = `${plan.customer_id}:${plan.product_id}`;
 
-  uniqueCustomerIds.forEach((customerId) => {
-    result[customerId] = [];
-  });
-
-  const latestPlanByCustomerProduct = new Map();
-
-  for (const plan of data || []) {
-    const key = `${plan.customer_id}:${plan.product_id}`;
-
-    if (!latestPlanByCustomerProduct.has(key)) {
-      latestPlanByCustomerProduct.set(key, plan);
+      if (!latestPlanByCustomerProduct.has(key)) {
+        latestPlanByCustomerProduct.set(key, plan);
+      }
     }
-  }
 
-  for (const plan of latestPlanByCustomerProduct.values()) {
-    result[plan.customer_id].push(plan);
-  }
+    for (const plan of latestPlanByCustomerProduct.values()) {
+      result[plan.customer_id].push(plan);
+    }
 
-  return result;
-},
+    return result;
+  },
 
 
   // ------------------------------------------

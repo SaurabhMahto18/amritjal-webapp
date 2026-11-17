@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 
 const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+  "min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-slate-50";
 
 const money = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -28,7 +27,7 @@ const money = (value) =>
 function ProductField({ label, children }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-2 block text-sm font-medium text-slate-600">
+      <span className="mb-1.5 block text-xs font-semibold text-slate-600 sm:text-sm">
         {label}
       </span>
       {children}
@@ -36,16 +35,37 @@ function ProductField({ label, children }) {
   );
 }
 
+function Message({ type = "error", children }) {
+  const styles =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-rose-200 bg-rose-50 text-rose-700";
+
+  const Icon = type === "success" ? CheckCircle2 : AlertCircle;
+
+  return (
+    <div
+      role={type === "success" ? "status" : "alert"}
+      className={`flex min-w-0 items-start gap-2.5 rounded-xl border p-3 text-sm ${styles}`}
+    >
+      <Icon size={18} className="mt-0.5 shrink-0" />
+      <span className="min-w-0 break-words">{children}</span>
+    </div>
+  );
+}
+
 function QuantityControl({ value, onChange, disabled = false }) {
   const quantity = Number(value) || 0;
 
   return (
-    <div className="inline-flex h-10 items-center overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="flex h-11 w-full max-w-40 items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
       <button
         type="button"
         disabled={disabled || quantity <= 0}
-        onClick={() => onChange(String(Math.max(0, quantity - 1)))}
-        className="flex h-full w-9 items-center justify-center bg-slate-50 text-slate-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+        onClick={() =>
+          onChange(String(Math.max(0, quantity - 1)))
+        }
+        className="flex h-full w-11 shrink-0 items-center justify-center bg-slate-50 text-lg text-slate-600 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Decrease quantity"
       >
         −
@@ -58,14 +78,15 @@ function QuantityControl({ value, onChange, disabled = false }) {
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="h-full w-14 border-x border-slate-200 text-center text-sm outline-none disabled:bg-slate-50"
+        className="h-full min-w-0 flex-1 border-x border-slate-200 text-center text-sm font-semibold outline-none disabled:bg-slate-50"
+        aria-label="Quantity"
       />
 
       <button
         type="button"
         disabled={disabled}
         onClick={() => onChange(String(quantity + 1))}
-        className="flex h-full w-9 items-center justify-center bg-slate-50 text-slate-600 hover:bg-blue-50 disabled:opacity-40"
+        className="flex h-full w-11 shrink-0 items-center justify-center bg-slate-50 text-lg text-slate-600 hover:bg-teal-50 disabled:opacity-40"
         aria-label="Increase quantity"
       >
         +
@@ -101,7 +122,10 @@ export default function CustomerProductsSection({
   const [editingQuantity, setEditingQuantity] = useState("1");
 
   const loadProducts = useCallback(async () => {
-    if (!customerId || !customerServiceApi) return;
+    if (!customerId || !customerServiceApi) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -183,7 +207,7 @@ export default function CustomerProductsSection({
     setError("");
     setSuccess("");
 
-    if (isArchived) return;
+    if (isArchived || saving) return;
 
     if (!selectedProductId) {
       setError("Please select a product.");
@@ -224,7 +248,7 @@ export default function CustomerProductsSection({
   async function handleUpdateAssignment(event) {
     event.preventDefault();
 
-    if (isArchived || !editingId) return;
+    if (isArchived || saving || !editingId) return;
 
     setError("");
     setSuccess("");
@@ -267,6 +291,7 @@ export default function CustomerProductsSection({
       await customerServiceApi.deactivateProductAssignment(item.id);
 
       if (expandedId === item.id) setExpandedId(null);
+      if (editingId === item.id) setEditingId("");
 
       await loadProducts();
       setSuccess(`${item.productName} assignment deactivated.`);
@@ -277,47 +302,43 @@ export default function CustomerProductsSection({
     }
   }
 
-  if (loading) {
+
+    if (loading) {
     return (
-      <div className="flex min-h-48 items-center justify-center gap-3 text-sm text-slate-500">
-        <RefreshCw size={19} className="animate-spin text-blue-600" />
+      <div className="flex min-h-48 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        <RefreshCw size={19} className="animate-spin text-teal-700" />
         Loading customer products...
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      {/* Messages */}
-      {error && (
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-        >
-          <AlertCircle size={18} className="mt-0.5 shrink-0" />
-          {error}
-        </div>
-      )}
+    <section
+      className="w-full min-w-0 space-y-4 sm:space-y-5"
+      aria-busy={saving}
+    >
+      {/* Header */}
+      <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 sm:text-lg">
+              Assigned Products
+            </h2>
 
-      {success && (
-        <div
-          role="status"
-          className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700"
-        >
-          <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
-          {success}
-        </div>
-      )}
+            <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700">
+              {assignments.length} assigned
+            </span>
+          </div>
 
-      {/* Assign Product Action */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-slate-900">
-            Assigned Products
-          </h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Select products and manage customer-specific rates.
+          <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+            Manage products, customer rates and daily quantities.
           </p>
+
+          {customer?.name && (
+            <p className="mt-1 text-xs font-medium text-slate-600">
+              Customer: {customer.name}
+            </p>
+          )}
         </div>
 
         {!isArchived && (
@@ -328,31 +349,41 @@ export default function CustomerProductsSection({
               setError("");
               setSuccess("");
             }}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+            disabled={saving}
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
-            {showForm ? <X size={16} /> : <Plus size={16} />}
-            {showForm ? "Close" : "Assign Product"}
+            {showForm ? <X size={17} /> : <Plus size={17} />}
+            {showForm ? "Close Form" : "Assign Product"}
           </button>
         )}
       </div>
 
-      {/* New Assignment Form */}
+      {/* Feedback */}
+      {error && <Message type="error">{error}</Message>}
+      {success && <Message type="success">{success}</Message>}
+
+      {/* Assign Product Form */}
       {showForm && !isArchived && (
         <form
           onSubmit={handleAssignProduct}
-          className="space-y-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 sm:p-5"
+          className="min-w-0 space-y-4 rounded-2xl border border-teal-100 bg-teal-50/50 p-4 sm:p-5"
         >
-          <h4 className="font-semibold text-slate-900">
-            Assign New Product
-          </h4>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 sm:text-base">
+              Assign New Product
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Select a product and configure its customer rate.
+            </p>
+          </div>
 
           {unassignedProducts.length === 0 ? (
-            <p className="rounded-lg bg-white p-4 text-sm text-slate-500">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
               All active products are already assigned to this customer.
-            </p>
+            </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <ProductField label="Select Product">
                   <select
                     value={selectedProductId}
@@ -363,6 +394,7 @@ export default function CustomerProductsSection({
                     required
                   >
                     <option value="">Choose product</option>
+
                     {unassignedProducts.map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.name}
@@ -377,9 +409,11 @@ export default function CustomerProductsSection({
                     type="number"
                     min="0"
                     step="0.01"
+                    inputMode="decimal"
                     value={unitPrice}
                     onChange={(event) => setUnitPrice(event.target.value)}
                     className={inputClass}
+                    placeholder="Enter price"
                     required
                   />
                 </ProductField>
@@ -389,21 +423,23 @@ export default function CustomerProductsSection({
                     type="number"
                     min="0"
                     step="1"
+                    inputMode="numeric"
                     value={defaultQuantity}
                     onChange={(event) =>
                       setDefaultQuantity(event.target.value)
                     }
                     className={inputClass}
+                    placeholder="Enter quantity"
                     required
                   />
                 </ProductField>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="submit"
                   disabled={saving || !selectedProductId}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {saving ? (
                     <RefreshCw size={16} className="animate-spin" />
@@ -417,7 +453,7 @@ export default function CustomerProductsSection({
                   type="button"
                   onClick={resetForm}
                   disabled={saving}
-                  className="min-h-10 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600"
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -427,55 +463,65 @@ export default function CustomerProductsSection({
         </form>
       )}
 
-      {/* Assigned Product List */}
+      {/* Empty State */}
       {assignments.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
-          <Package size={30} className="mx-auto text-blue-600" />
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center sm:py-12">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+            <Package size={27} />
+          </div>
 
-          <h4 className="mt-3 font-semibold text-slate-900">
+          <h3 className="mt-4 text-base font-bold text-slate-900">
             No Products Assigned
-          </h4>
+          </h3>
 
-          <p className="mt-2 text-sm text-slate-500">
-            Assign a product to manage this customer's delivery rate.
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+            Assign products to manage this customer's delivery rates and
+            quantities.
           </p>
 
           {!isArchived && (
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+              className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 sm:w-auto"
             >
-              <Plus size={16} />
+              <Plus size={17} />
               Assign First Product
             </button>
           )}
         </div>
       ) : (
-        <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2">
           {assignments.map((item) => {
             const expanded = expandedId === item.id;
             const editing = editingId === item.id;
 
+            const totalPrice =
+              Number(item.unitPrice || 0) *
+              Number(item.defaultQuantity || 0);
+
             return (
-              <article key={item.id} className="p-4 sm:p-5">
-                {/* Product Row */}
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked
-                    readOnly
-                    aria-label={`${item.productName} is assigned`}
-                    className="size-5 shrink-0 accent-blue-600"
-                  />
+              <article
+                key={item.id}
+                className={`min-w-0 overflow-hidden rounded-2xl border bg-white transition ${
+                  expanded
+                    ? "border-teal-200 shadow-sm"
+                    : "border-slate-200"
+                }`}
+              >
+                {/* Product Card Header */}
+                <div className="flex min-w-0 items-center gap-3 p-3.5 sm:p-4">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 sm:size-11">
+                    <Package size={20} />
+                  </div>
 
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-slate-900">
+                    <h3 className="break-words text-sm font-bold text-slate-900 sm:text-base">
                       {item.productName}
-                    </h4>
+                    </h3>
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      Price Per Unit: {money(item.unitPrice)}
+                    <p className="mt-0.5 break-words text-xs text-slate-500">
+                      {item.sku || item.unit || "Assigned product"}
                     </p>
                   </div>
 
@@ -486,32 +532,65 @@ export default function CustomerProductsSection({
                     }
                     aria-expanded={expanded}
                     aria-label={
-                      expanded ? "Collapse product" : "Expand product"
+                      expanded
+                        ? `Collapse ${item.productName}`
+                        : `Expand ${item.productName}`
                     }
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-teal-50 hover:text-teal-700"
                   >
                     {expanded ? (
-                      <ChevronUp size={18} />
+                      <ChevronUp size={19} />
                     ) : (
-                      <ChevronDown size={18} />
+                      <ChevronDown size={19} />
                     )}
                   </button>
                 </div>
 
+                {/* Compact Summary */}
+                <div className="grid grid-cols-2 gap-2 px-3.5 pb-3.5 sm:px-4 sm:pb-4">
+                  <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                      Unit Price
+                    </p>
+                    <p className="mt-1 break-words text-sm font-bold text-slate-900 sm:text-base">
+                      {money(item.unitPrice)}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">
+                      Default Qty
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-slate-900 sm:text-base">
+                      {item.defaultQuantity ?? 0}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Expanded Details */}
                 {expanded && (
-                  <div className="mt-5 space-y-5 border-l-2 border-blue-100 pl-4 sm:ml-2 sm:pl-5">
+                  <div className="space-y-4 border-t border-slate-100 bg-slate-50/60 p-3.5 sm:p-4">
                     {editing ? (
                       <form
                         onSubmit={handleUpdateAssignment}
                         className="space-y-4"
                       >
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">
+                            Edit Product Assignment
+                          </h4>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Update price and default delivery quantity.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <ProductField label="Price Per Unit (₹)">
                             <input
                               type="number"
                               min="0"
                               step="0.01"
+                              inputMode="decimal"
                               value={editingPrice}
                               onChange={(event) =>
                                 setEditingPrice(event.target.value)
@@ -522,35 +601,33 @@ export default function CustomerProductsSection({
                           </ProductField>
 
                           <ProductField label="Daily Delivered Quantity">
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
+                            <QuantityControl
                               value={editingQuantity}
-                              onChange={(event) =>
-                                setEditingQuantity(event.target.value)
-                              }
-                              className={inputClass}
-                              required
+                              onChange={setEditingQuantity}
+                              disabled={saving}
                             />
                           </ProductField>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
                           <button
                             type="submit"
                             disabled={saving}
-                            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50 sm:w-auto"
                           >
-                            <Save size={15} />
-                            Save Changes
+                            {saving ? (
+                              <RefreshCw size={16} className="animate-spin" />
+                            ) : (
+                              <Save size={16} />
+                            )}
+                            {saving ? "Saving..." : "Save Changes"}
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setEditingId("")}
                             disabled={saving}
-                            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600"
+                            className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                           >
                             Cancel
                           </button>
@@ -558,65 +635,58 @@ export default function CustomerProductsSection({
                       </form>
                     ) : (
                       <>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                            Pricing
-                          </p>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="rounded-xl border border-slate-200 bg-white p-3">
+                            <p className="text-xs text-slate-500">
+                              Price Per Unit
+                            </p>
+                            <p className="mt-1 text-base font-bold text-slate-900">
+                              {money(item.unitPrice)}
+                            </p>
+                          </div>
 
-                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div>
-                              <p className="mb-1.5 text-xs text-slate-500">
-                                Price Per Unit
-                              </p>
-                              <p className="font-semibold text-slate-900">
-                                {money(item.unitPrice)}
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="mb-1.5 text-xs text-slate-500">
-                                Daily Delivered Quantity
-                              </p>
-                              <p className="font-semibold text-slate-900">
-                                {item.defaultQuantity ?? 0}
-                              </p>
-                            </div>
+                          <div className="rounded-xl border border-slate-200 bg-white p-3">
+                            <p className="text-xs text-slate-500">
+                              Daily Delivered Quantity
+                            </p>
+                            <p className="mt-1 text-base font-bold text-slate-900">
+                              {item.defaultQuantity ?? 0}
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-slate-800">
-                            Price To Customer:{" "}
-                            {money(
-                              Number(item.unitPrice) *
-                                Number(item.defaultQuantity)
-                            )}
-                          </p>
-
-                          {!isArchived && (
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => startEditing(item)}
-                                disabled={saving}
-                                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                              >
-                                <Pencil size={13} />
-                                Edit
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeactivate(item)}
-                                disabled={saving}
-                                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50"
-                              >
-                                <Trash2 size={13} />
-                                Deactivate
-                              </button>
-                            </div>
-                          )}
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-teal-100 bg-teal-50 p-3">
+                          <span className="text-xs font-semibold text-teal-800 sm:text-sm">
+                            Default Daily Value
+                          </span>
+                          <span className="text-base font-bold text-teal-900">
+                            {money(totalPrice)}
+                          </span>
                         </div>
+
+                        {!isArchived && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditing(item)}
+                              disabled={saving}
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 sm:text-sm"
+                            >
+                              <Pencil size={15} />
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeactivate(item)}
+                              disabled={saving}
+                              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 sm:text-sm"
+                            >
+                              <Trash2 size={15} />
+                              Deactivate
+                            </button>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -628,14 +698,14 @@ export default function CustomerProductsSection({
       )}
 
       {/* Information */}
-      <div className="flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 p-4">
+      <div className="flex min-w-0 items-start gap-2.5 rounded-xl border border-blue-100 bg-blue-50 p-3.5 sm:p-4">
         <Info size={18} className="mt-0.5 shrink-0 text-blue-700" />
-        <p className="text-xs leading-5 text-blue-800">
+        <p className="min-w-0 text-xs leading-5 text-blue-800 sm:text-sm">
           Product assignment controls which products are available for this
           customer's deliveries. Changing an assignment does not rewrite
           historical delivery records.
         </p>
       </div>
-    </div>
+    </section>
   );
 }

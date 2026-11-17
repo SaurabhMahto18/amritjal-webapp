@@ -6,38 +6,29 @@ export default function CustomerDetailLayout({
   const hasSidebar = Boolean(sidebar);
 
   return (
-    <main className="min-h-screen w-full bg-[#F0F4F8] px-3 py-5 sm:px-5 lg:px-8">
-      <div className="mx-auto w-full max-w-[1500px] space-y-5">
+    <main className="min-h-screen w-full overflow-x-hidden bg-[#F0F4F8] px-2 py-3 text-slate-800 sm:px-5 sm:py-5 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1500px] min-w-0 flex-col gap-3 sm:gap-5">
+        <div className="w-full min-w-0">
+          {header}
+        </div>
 
-        {/* Customer Header and Tabs */}
-        {header}
-
-        {/* Sidebar and Content */}
         <div
           className={
             hasSidebar
-              ? "grid grid-cols-1 items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]"
-              : "block w-full"
+              ? "grid w-full min-w-0 grid-cols-1 items-start gap-3 sm:gap-5 lg:grid-cols-[270px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]"
+              : "block w-full min-w-0"
           }
         >
-          {/* Left Sidebar - Only on Details tab */}
           {hasSidebar && (
-            <aside className="w-full min-w-0">
+            <aside className="w-full min-w-0 lg:sticky lg:top-4">
               {sidebar}
             </aside>
           )}
 
-          {/* Main Content */}
-          <div className="w-full min-w-0">
+          <section className="w-full min-w-0 overflow-hidden">
             {children}
-          </div>
+          </section>
         </div>
-
-        {/* Footer */}
-        <footer className="flex items-center justify-center py-2 text-xs text-slate-400">
-          Amrit Jal · Customer Account
-        </footer>
-
       </div>
     </main>
   );

@@ -116,18 +116,18 @@ function StatusBadge({ status }) {
 
 function SummaryCard({ title, value, icon, subtitle }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-500">{title}</p>
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:rounded-2xl sm:p-5">
+      <div className="flex min-w-0 items-center justify-between gap-1">
+        <p className="min-w-0 truncate text-[10px] font-medium leading-4 text-slate-500 sm:text-sm">{title}</p>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 sm:size-10 sm:rounded-xl">
           {icon}
         </span>
       </div>
-      <p className="mt-3 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+      <p className="mt-2 break-words text-xs font-bold leading-tight tracking-tight text-slate-900 sm:mt-3 sm:text-2xl">
         {value}
       </p>
       {subtitle && (
-        <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+        <p className="mt-1 hidden text-xs text-slate-400 sm:block">{subtitle}</p>
       )}
     </div>
   );
@@ -225,32 +225,32 @@ export default function CustomerInvoicesSection({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-3 sm:space-y-5">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-              <Receipt size={21} />
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 sm:size-10 sm:rounded-xl">
+              <Receipt size={18} />
             </span>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-base font-bold text-slate-900 sm:text-xl">
                 Invoices & Billing
               </h2>
-              <p className="text-sm text-slate-500">
+              <p className="text-[11px] leading-4 text-slate-500 sm:text-sm">
                 Billing history for {customer?.name || "this customer"}
               </p>
             </div>
           </div>
         </div>
 
-        <span className="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 sm:px-3 sm:text-xs">
           {filteredInvoices.length} Invoices
         </span>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <SummaryCard
           title="Total Invoice Amount"
           value={currency(totals.total)}
@@ -272,8 +272,8 @@ export default function CustomerInvoicesSection({
       </div>
 
       {/* Search and filters */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row">
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5">
+        <div className="flex items-center gap-2 lg:flex-row">
           <div className="relative flex-1">
             <Search
               size={18}
@@ -284,7 +284,7 @@ export default function CustomerInvoicesSection({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search invoice number..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-100"
+              className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs sm:py-3 sm:pl-11 sm:pr-4 sm:text-sm outline-none transition focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-100"
             />
           </div>
 
@@ -309,7 +309,7 @@ export default function CustomerInvoicesSection({
             <button
               type="button"
               onClick={resetFilters}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             >
               <RotateCcw size={16} />
               Reset
@@ -318,13 +318,13 @@ export default function CustomerInvoicesSection({
         </div>
 
         {showFilters && (
-          <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:mt-4 sm:gap-3 sm:pt-4 sm:grid-cols-3">
             <label className="text-xs font-semibold text-slate-500">
               Payment Status
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-normal text-slate-800 outline-none focus:border-teal-500"
+                className="mt-1.5 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 text-xs sm:mt-2 sm:px-3 sm:py-3 sm:text-sm font-normal text-slate-800 outline-none focus:border-teal-500"
               >
                 <option value="all">All Status</option>
                 <option value="paid">Paid</option>
@@ -340,7 +340,7 @@ export default function CustomerInvoicesSection({
                 value={fromDate}
                 max={toDate || undefined}
                 onChange={(event) => setFromDate(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal text-slate-800 outline-none focus:border-teal-500"
+                className="mt-1.5 w-full min-w-0 rounded-xl border border-slate-200 px-2.5 py-2.5 text-xs sm:mt-2 sm:px-3 sm:py-3 sm:text-sm font-normal text-slate-800 outline-none focus:border-teal-500"
               />
             </label>
 
@@ -351,7 +351,7 @@ export default function CustomerInvoicesSection({
                 value={toDate}
                 min={fromDate || undefined}
                 onChange={(event) => setToDate(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal text-slate-800 outline-none focus:border-teal-500"
+                className="mt-1.5 w-full min-w-0 rounded-xl border border-slate-200 px-2.5 py-2.5 text-xs sm:mt-2 sm:px-3 sm:py-3 sm:text-sm font-normal text-slate-800 outline-none focus:border-teal-500"
               />
             </label>
           </div>
@@ -359,15 +359,15 @@ export default function CustomerInvoicesSection({
       </section>
 
       {/* Invoice list */}
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-4 sm:px-5">
+      <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-3 sm:px-5 sm:py-4">
           <div>
-            <h3 className="font-bold text-slate-900">Invoice History</h3>
+            <h3 className="text-sm font-bold text-slate-900 sm:text-base">Invoice History</h3>
             <p className="mt-0.5 text-xs text-slate-500">
               View customer billing records
             </p>
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-[10px] text-slate-400 sm:text-xs">
             Showing {filteredInvoices.length} of {safeInvoices.length}
           </span>
         </div>
@@ -564,12 +564,12 @@ export default function CustomerInvoicesSection({
                     type="button"
                     onClick={() => openInvoice(invoice)}
                     disabled={!onInvoiceClick}
-                    className="block w-full p-4 text-left transition hover:bg-slate-50 disabled:cursor-default sm:p-5"
+                    className="block w-full min-w-0 p-3 text-left transition hover:bg-slate-50 disabled:cursor-default sm:p-5"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                          <Receipt size={20} />
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 sm:size-11 sm:rounded-xl">
+                          <Receipt size={17} />
                         </span>
                         <div className="min-w-0">
                           <p className="truncate font-bold text-slate-900">
@@ -585,16 +585,16 @@ export default function CustomerInvoicesSection({
                       <StatusBadge status={status} />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3">
+                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2.5 sm:mt-4 sm:gap-3 sm:rounded-xl sm:p-3">
                       <div>
                         <p className="text-xs text-slate-500">Payable</p>
-                        <p className="mt-1 font-bold text-slate-900">
+                        <p className="mt-1 break-words text-sm font-bold text-slate-900">
                           {currency(payable)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Paid</p>
-                        <p className="mt-1 font-semibold text-emerald-700">
+                        <p className="mt-1 break-words text-sm font-semibold text-emerald-700">
                           {currency(paid)}
                         </p>
                       </div>

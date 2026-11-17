@@ -1,16 +1,27 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  ArrowRight,
   Upload,
   FileSpreadsheet,
   FileJson,
+  FileText,
   Download,
   CheckCircle2,
   AlertCircle,
   LoaderCircle,
   Users,
   Info,
+  X,
+  ShieldCheck,
+  RefreshCw,
+  IndianRupee,
+  UserRound,
+  Phone,
+  MapPin,
+  FileCheck2,
 } from "lucide-react";
 import { useCustomers } from "../hooks/useCustomers";
 
@@ -97,7 +108,8 @@ function mapRow(source, rowNumber) {
   return result;
 }
 
-// CSV reader supporting quoted commas, escaped quotes, CRLF and newlines inside quotes.
+// CSV reader supports quoted commas, escaped quotes, CRLF
+// and newlines inside quoted fields.
 function parseCSV(text) {
   const input = String(text ?? "").replace(/^\uFEFF/, "");
   const rows = [];
@@ -127,6 +139,7 @@ function parseCSV(text) {
       cell = "";
     } else if (char === "\n" || char === "\r") {
       if (char === "\r" && input[i + 1] === "\n") i += 1;
+
       row.push(cell);
 
       if (row.some((value) => String(value).trim() !== "")) {
@@ -145,6 +158,7 @@ function parseCSV(text) {
   }
 
   row.push(cell);
+
   if (row.some((value) => String(value).trim() !== "")) {
     rows.push(row);
   }
@@ -159,7 +173,9 @@ function parseCSV(text) {
   const nameAliases = HEADER_ALIASES.name.map(normalizeHeader);
 
   if (!headers.some((header) => nameAliases.includes(header))) {
-    throw new Error("CSV must include a Name or Customer Name column.");
+    throw new Error(
+      "CSV must include a Name or Customer Name column."
+    );
   }
 
   const duplicateHeaders = headers.filter(
@@ -168,7 +184,9 @@ function parseCSV(text) {
 
   if (duplicateHeaders.length > 0) {
     throw new Error(
-      `CSV contains duplicate column headings: ${[...new Set(duplicateHeaders)].join(", ")}.`
+      `CSV contains duplicate column headings: ${[
+        ...new Set(duplicateHeaders),
+      ].join(", ")}.`
     );
   }
 
@@ -176,7 +194,9 @@ function parseCSV(text) {
     const source = {};
 
     headers.forEach((header, column) => {
-      if (header) source[header] = values[column] ?? "";
+      if (header) {
+        source[header] = values[column] ?? "";
+      }
     });
 
     return mapRow(source, index + 2);
@@ -206,7 +226,9 @@ function parseJSON(text) {
 
   return list.map((row, index) => {
     if (!row || typeof row !== "object" || Array.isArray(row)) {
-      throw new Error(`JSON customer at row ${index + 1} must be an object.`);
+      throw new Error(
+        `JSON customer at row ${index + 1} must be an object.`
+      );
     }
 
     return mapRow(row, index + 1);
@@ -249,10 +271,7 @@ function downloadTemplate() {
   const csv = [headers, sample]
     .map((row) =>
       row
-        .map(
-          (value) =>
-            `"${String(value).replace(/"/g, '""')}"`
-        )
+        .map((value) => `"${String(value).replace(/"/g, '""')}"`)
         .join(",")
     )
     .join("\r\n");
@@ -276,6 +295,121 @@ function formatAmount(value) {
   return String(value);
 }
 
+function formatMoney(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+}
+
+function StepIndicator({ number, title, active, completed }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+          completed
+            ? "bg-teal-700 text-white"
+            : active
+              ? "bg-white text-teal-800 ring-2 ring-teal-200"
+              : "bg-white/15 text-white/70"
+        }`}
+      >
+        {completed ? (
+          <CheckCircle2 size={17} />
+        ) : (
+          number
+        )}
+      </div>
+
+      <span
+        className={`truncate text-xs font-semibold sm:text-sm ${
+          active || completed ? "text-white" : "text-white/60"
+        }`}
+      >
+        {title}
+      </span>
+    </div>
+  );
+}
+
+function CustomerPreviewCard({ row }) {
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+            <UserRound size={19} />
+          </div>
+
+          <div className="min-w-0">
+            <h3 className="break-words text-sm font-bold text-slate-900">
+              {row.name || "Unnamed customer"}
+            </h3>
+
+            <p className="mt-1 text-[11px] text-slate-400">
+              File row #{row._rowNumber}
+            </p>
+          </div>
+        </div>
+
+        <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600">
+          Preview
+        </span>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="min-w-0 rounded-lg bg-slate-50 p-2.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+            <Phone size={12} />
+            Mobile
+          </div>
+          <p className="mt-1 break-all text-xs font-semibold text-slate-700">
+            {row.phone || "—"}
+          </p>
+        </div>
+
+        <div className="min-w-0 rounded-lg bg-slate-50 p-2.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+            <MapPin size={12} />
+            Area
+          </div>
+          <p className="mt-1 break-words text-xs font-semibold text-slate-700">
+            {row.area || "—"}
+          </p>
+        </div>
+
+        <div className="rounded-lg bg-slate-50 p-2.5">
+          <p className="text-[10px] font-medium text-slate-400">
+            Jar Rate
+          </p>
+          <p className="mt-1 text-xs font-bold text-slate-800">
+            {formatMoney(row.jarRate)}
+          </p>
+        </div>
+
+        <div className="rounded-lg bg-slate-50 p-2.5">
+          <p className="text-[10px] font-medium text-slate-400">
+            Opening Balance
+          </p>
+          <p className="mt-1 text-xs font-bold text-slate-800">
+            {formatMoney(row.openingBalance)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
+        <span className="text-[11px] text-slate-500">
+          Security Deposit
+        </span>
+        <span className="text-xs font-bold text-slate-700">
+          {formatMoney(row.securityDeposit)}
+        </span>
+      </div>
+    </article>
+  );
+}
+
 export default function BulkCustomerImportPage() {
   const navigate = useNavigate();
   const fileRef = useRef(null);
@@ -291,7 +425,7 @@ export default function BulkCustomerImportPage() {
   const [result, setResult] = useState(null);
   const [refreshWarning, setRefreshWarning] = useState("");
 
-  // SEO metadata for this authenticated management page.
+  // SEO metadata
   useEffect(() => {
     const previousTitle = document.title;
 
@@ -300,6 +434,7 @@ export default function BulkCustomerImportPage() {
 
     const previousDescription =
       document.head.querySelector(descriptionSelector);
+
     const previousRobots =
       document.head.querySelector(robotsSelector);
 
@@ -308,6 +443,7 @@ export default function BulkCustomerImportPage() {
 
     const description =
       previousDescription || document.createElement("meta");
+
     const robots =
       previousRobots || document.createElement("meta");
 
@@ -400,6 +536,20 @@ export default function BulkCustomerImportPage() {
     }
   }
 
+  function clearFile() {
+    if (busy) return;
+
+    setFileName("");
+    setRows([]);
+    setParseError("");
+    setResult(null);
+    setRefreshWarning("");
+
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  }
+
   async function handleImport() {
     if (!rows.length || busy) return;
 
@@ -438,184 +588,388 @@ export default function BulkCustomerImportPage() {
     }
   }
 
+  function handleFileDrop(event) {
+    event.preventDefault();
+
+    if (busy) return;
+
+    const file = event.dataTransfer?.files?.[0];
+
+    if (file) {
+      handleFile(file);
+    }
+  }
+
+  const hasPreview = rows.length > 0 && !result;
+
   return (
-    <main className="min-h-full bg-slate-50 px-3 py-5 text-slate-800 sm:px-5 lg:px-7">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <main
+      className={`min-h-full bg-[#F5F8F8] px-3 py-4 text-slate-800 sm:px-5 sm:py-6 lg:px-8 ${
+        hasPreview ? "pb-28 sm:pb-8" : "pb-6"
+      }`}
+    >
+      <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
 
-        <Link
-          to="/customers"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-teal-700"
-        >
-          <ArrowLeft size={16} />
-          Back to Customers
-        </Link>
+        {/* TOP NAVIGATION */}
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            to="/customers"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl px-2 text-xs font-semibold text-slate-500 transition hover:bg-white hover:text-teal-700 sm:text-sm"
+          >
+            <ArrowLeft size={17} />
+            <span>Back to Customers</span>
+          </Link>
 
-        <header>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
+          <span className="hidden items-center gap-1.5 rounded-full border border-teal-100 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-700 sm:inline-flex">
+            <ShieldCheck size={14} />
             Customer Management
-          </p>
+          </span>
+        </div>
 
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Bulk Customer Import
-          </h1>
+        {/* HERO / PAGE HEADER */}
+        <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0D514B] via-teal-800 to-[#087F73] p-4 text-white shadow-lg shadow-teal-950/10 sm:p-6 lg:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full border border-white/10" />
+          <div className="pointer-events-none absolute -right-6 -top-9 size-44 rounded-full border border-white/10" />
 
-          <p className="mt-1 text-sm text-slate-500">
-            Import multiple customer records from a CSV or JSON file.
-          </p>
+          <div className="relative">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 sm:size-14">
+                <Users size={23} className="sm:hidden" />
+                <Users size={27} className="hidden sm:block" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-teal-100 sm:text-xs">
+                  Customer Operations
+                </p>
+
+                <h1 className="mt-1.5 text-xl font-bold tracking-tight sm:mt-2 sm:text-3xl">
+                  Bulk Customer Import
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-xs leading-5 text-teal-50/90 sm:text-sm sm:leading-6">
+                  Add multiple customers together using a CSV or JSON file.
+                  Review the records before importing them into Amrit Jal.
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white sm:text-xs">
+                    CSV Supported
+                  </span>
+
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white sm:text-xs">
+                    JSON Supported
+                  </span>
+
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white sm:text-xs">
+                    Maximum 10 MB
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP INDICATOR */}
+            <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-black/10 p-3 sm:mt-7 sm:p-4">
+              <StepIndicator
+                number="1"
+                title="Select File"
+                active={!fileName}
+                completed={Boolean(rows.length || result)}
+              />
+
+              <StepIndicator
+                number="2"
+                title="Review Data"
+                active={rows.length > 0 && !result}
+                completed={Boolean(result)}
+              />
+
+              <StepIndicator
+                number="3"
+                title="Import"
+                active={Boolean(result)}
+                completed={Boolean(result && !result.blocked)}
+              />
+            </div>
+          </div>
         </header>
 
-        {/* STEP 1: FILE PREPARATION */}
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="font-bold text-slate-900">
-                1. Prepare your file
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                CSV and JSON formats are supported. Customer name is
-                required. Customer group must match an existing group
-                name or ID.
-              </p>
+        {/* STEP 1: FILE UPLOAD */}
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <FileSpreadsheet size={19} />
             </div>
 
-            <button
-              type="button"
-              onClick={downloadTemplate}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <Download size={16} />
-              Download CSV template
-            </button>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-2 font-semibold text-slate-800">
-                <FileSpreadsheet
-                  size={18}
-                  className="text-emerald-700"
-                />
-                CSV
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-900 sm:text-base">
+                  01. Prepare your file
+                </h2>
+                <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700">
+                  Required
+                </span>
               </div>
 
-              <p className="mt-1 text-xs text-slate-500">
-                First row must contain column headings.
+              <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+                Use the template or select an existing CSV/JSON file.
+                Customer name is required.
               </p>
             </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-2 font-semibold text-slate-800">
-                <FileJson
-                  size={18}
-                  className="text-amber-700"
-                />
-                JSON
-              </div>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Use an array of customer objects or a customers array.
-              </p>
-            </div>
-
           </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.json"
-            className="hidden"
-            onChange={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
+          <div className="space-y-4 p-3.5 sm:p-6">
 
-              const file = event.currentTarget.files?.[0];
+            {/* FORMAT OPTIONS */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 sm:p-4">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm">
+                  <FileSpreadsheet size={19} />
+                </div>
 
-              console.log("FILE SELECTED:", file?.name);
-              console.log("CURRENT URL:", window.location.href);
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 sm:text-sm">
+                    CSV File
+                  </p>
+                  <p className="mt-0.5 text-[10px] leading-4 text-slate-500 sm:text-xs">
+                    Spreadsheet format
+                  </p>
+                </div>
+              </div>
 
-              if (file) {
-                handleFile(file);
-              }
-            }}
-          />
+              <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-amber-100 bg-amber-50/60 p-3 sm:p-4">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm">
+                  <FileJson size={19} />
+                </div>
 
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="mt-5 flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-teal-200 bg-teal-50/50 px-5 py-9 text-center transition hover:border-teal-400 hover:bg-teal-50"
-          >
-            <Upload size={25} className="text-teal-700" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 sm:text-sm">
+                    JSON File
+                  </p>
+                  <p className="mt-0.5 text-[10px] leading-4 text-slate-500 sm:text-xs">
+                    Structured data
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <span className="mt-3 text-sm font-bold text-slate-800">
-              Choose CSV or JSON file
-            </span>
+            {/* TEMPLATE DOWNLOAD */}
+            <div className="flex flex-col gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-3.5 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+              <div className="flex min-w-0 items-start gap-2.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-teal-700 shadow-sm">
+                  <Download size={18} />
+                </div>
 
-            <span className="mt-1 text-xs text-slate-500">
-              Select a file from your device
-            </span>
-          </button>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800 sm:text-sm">
+                    Don't have a template?
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-slate-500 sm:text-xs">
+                    Download the sample CSV with supported column headings.
+                  </p>
+                </div>
+              </div>
 
-          {fileName && (
-            <p className="mt-3 text-sm font-medium text-slate-600">
-              Selected file: {fileName}
-            </p>
-          )}
+              <button
+                type="button"
+                onClick={downloadTemplate}
+                disabled={busy}
+                className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-bold text-teal-800 transition hover:bg-teal-50 disabled:opacity-50 sm:w-auto sm:text-sm"
+              >
+                <Download size={15} />
+                Download Template
+              </button>
+            </div>
 
-          {parseError && (
+            {/* FILE PICKER */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,.json"
+              className="hidden"
+              onChange={async (event) => {
+                const file = event.currentTarget.files?.[0];
+
+                if (file) {
+                  await handleFile(file);
+                }
+
+                // Allows selecting the same file again.
+                event.currentTarget.value = "";
+              }}
+            />
+
             <div
-              role="alert"
-              className="mt-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleFileDrop}
+              className="rounded-2xl border-2 border-dashed border-teal-200 bg-[#F4FBF9] px-4 py-7 text-center transition hover:border-teal-400 hover:bg-teal-50/60 sm:px-8 sm:py-10"
             >
-              <AlertCircle
-                size={17}
-                className="mt-0.5 shrink-0"
-              />
-              {parseError}
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm sm:size-16">
+                <Upload size={27} />
+              </div>
+
+              <h3 className="mt-4 text-sm font-bold text-slate-900 sm:text-base">
+                Choose your customer file
+              </h3>
+
+              <p className="mx-auto mt-1.5 max-w-xs text-[11px] leading-5 text-slate-500 sm:text-sm">
+                Select a CSV or JSON file from your device.
+                You can also drop a file here on desktop.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={busy}
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-800 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                <Upload size={17} />
+                Select File
+              </button>
+
+              <p className="mt-3 text-[10px] font-medium text-slate-400">
+                CSV or JSON · Maximum file size 10 MB
+              </p>
             </div>
-          )}
+
+            {/* SELECTED FILE */}
+            {fileName && (
+              <div className="flex min-w-0 items-center gap-3 rounded-xl border border-teal-100 bg-teal-50/60 p-3.5">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-teal-700 shadow-sm">
+                  <FileCheck2 size={20} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">
+                    {fileName}
+                  </p>
+                  <p className="mt-1 text-[10px] text-teal-700">
+                    {rows.length > 0
+                      ? `${rows.length} customer records detected`
+                      : "File selected"}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  disabled={busy}
+                  aria-label="Remove selected file"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white hover:text-rose-600 disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+
+            {/* PARSE ERROR */}
+            {parseError && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs leading-5 text-rose-700 sm:text-sm"
+              >
+                <AlertCircle
+                  size={18}
+                  className="mt-0.5 shrink-0"
+                />
+                <p className="min-w-0">{parseError}</p>
+              </div>
+            )}
+          </div>
         </section>
 
-        {/* STEP 2: IMPORT PREVIEW */}
-
-        {rows.length > 0 && (
+        {/* STEP 2: PREVIEW */}
+        {hasPreview && (
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 p-4 sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                    <FileText size={19} />
+                  </div>
 
-            <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
-              <div>
-                <h2 className="font-bold text-slate-900">
-                  2. Review import preview
-                </h2>
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-bold text-slate-900 sm:text-base">
+                      02. Review customer data
+                    </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  {rows.length} rows detected. Previewing first{" "}
-                  {previewRows.length}.
-                </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      Check the records before importing them.
+                    </p>
+                  </div>
+                </div>
+
+                <span className="shrink-0 rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-bold text-teal-800 sm:text-xs">
+                  {rows.length} Records
+                </span>
               </div>
 
-              <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
-                Duplicate policy: Skip
-              </span>
+              {/* PREVIEW SUMMARY */}
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-medium text-slate-400">
+                    Total detected
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
+                    {rows.length}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-[10px] font-medium text-slate-400">
+                    Showing preview
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums">
+                    {previewRows.length}
+                  </p>
+                </div>
+
+                <div className="col-span-2 rounded-xl bg-amber-50 p-3 sm:col-span-1">
+                  <p className="text-[10px] font-medium text-amber-700">
+                    Duplicate policy
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-amber-800">
+                    Skip existing
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            {/* MOBILE CARD PREVIEW */}
+            <div className="space-y-2.5 p-3.5 sm:hidden">
+              {previewRows.map((row) => (
+                <CustomerPreviewCard
+                  key={row._rowNumber}
+                  row={row}
+                />
+              ))}
+
+              {rows.length > previewRows.length && (
+                <p className="rounded-xl bg-slate-50 px-3 py-3 text-center text-xs font-medium text-slate-500">
+                  + {rows.length - previewRows.length} more records
+                  will be processed during import.
+                </p>
+              )}
+            </div>
+
+            {/* DESKTOP TABLE */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[850px] text-left text-sm">
+                <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
                     {[
                       "Row",
-                      "Customer name",
+                      "Customer Name",
                       "Mobile",
                       "Area",
-                      "Jar rate",
-                      "Opening balance",
-                      "Security deposit",
+                      "Jar Rate",
+                      "Opening Balance",
+                      "Security Deposit",
                     ].map((heading) => (
                       <th
                         key={heading}
-                        className="px-4 py-3 font-semibold"
+                        className="whitespace-nowrap px-4 py-3.5 font-bold"
                       >
                         {heading}
                       </th>
@@ -625,174 +979,271 @@ export default function BulkCustomerImportPage() {
 
                 <tbody className="divide-y divide-slate-100">
                   {previewRows.map((row) => (
-                    <tr key={row._rowNumber}>
-                      <td className="px-4 py-3 text-slate-400">
+                    <tr
+                      key={row._rowNumber}
+                      className="transition hover:bg-slate-50/70"
+                    >
+                      <td className="px-4 py-3 text-xs text-slate-400">
                         {row._rowNumber}
                       </td>
 
-                      <td className="px-4 py-3 font-semibold text-slate-800">
-                        {row.name || "—"}
+                      <td className="max-w-52 px-4 py-3 font-semibold text-slate-800">
+                        <span className="block truncate">
+                          {row.name || "—"}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-slate-600">
                         {row.phone || "—"}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-slate-600">
                         {row.area || "—"}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-slate-700">
                         {formatAmount(row.jarRate)}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-slate-700">
                         {formatAmount(row.openingBalance)}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-slate-700">
                         {formatAmount(row.securityDeposit)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {rows.length > previewRows.length && (
+                <p className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                  Showing {previewRows.length} of {rows.length} records.
+                  All records will be processed during import.
+                </p>
+              )}
             </div>
 
-            <div className="flex flex-col justify-between gap-3 border-t border-slate-100 p-5 sm:flex-row sm:items-center">
-              <p className="flex items-center gap-2 text-xs text-slate-500">
-                <Info size={15} />
-                Existing mobile numbers are skipped; existing customer
-                records are never overwritten. Security deposit is
-                stored separately from opening balance.
-              </p>
+            {/* IMPORT INFORMATION + DESKTOP ACTION */}
+            <div className="border-t border-slate-100 p-3.5 sm:p-5">
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                <Info
+                  size={17}
+                  className="mt-0.5 shrink-0 text-amber-700"
+                />
+
+                <p className="text-[11px] leading-5 text-amber-900 sm:text-xs">
+                  Existing mobile numbers are skipped. Existing customer
+                  records are never overwritten. Security deposit is stored
+                  separately from opening balance.
+                </p>
+              </div>
+
+              <div className="mt-4 hidden justify-end sm:flex">
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={busy || !rows.length}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-teal-800 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {busy ? (
+                    <>
+                      <LoaderCircle size={17} className="animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={17} />
+                      Import {rows.length} Customers
+                      <ArrowRight size={16} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* MOBILE STICKY IMPORT ACTION */}
+        {hasPreview && (
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_25px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden">
+            <div className="mx-auto flex max-w-6xl items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium text-slate-400">
+                  Ready to import
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-slate-900">
+                  {rows.length} Customers
+                </p>
+              </div>
 
               <button
                 type="button"
                 onClick={handleImport}
                 disabled={busy || !rows.length}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-800 px-5 py-3 text-xs font-bold text-white shadow-sm transition active:scale-[0.98] disabled:opacity-50"
               >
                 {busy ? (
-                  <LoaderCircle
-                    size={17}
-                    className="animate-spin"
-                  />
+                  <>
+                    <LoaderCircle size={17} className="animate-spin" />
+                    Importing
+                  </>
                 ) : (
-                  <Upload size={17} />
+                  <>
+                    <Upload size={16} />
+                    Import Customers
+                  </>
                 )}
-
-                {busy
-                  ? "Importing..."
-                  : `Import ${rows.length} rows`}
               </button>
             </div>
-          </section>
+          </div>
         )}
 
         {/* STEP 3: IMPORT RESULT */}
-
         {result && (
-          <section
-            className={`rounded-2xl border bg-white p-5 shadow-sm ${result.blocked
-              ? "border-rose-200"
-              : "border-emerald-200"
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+            {/* Result header */}
+            <div
+              className={`p-4 sm:p-6 ${
+                result.blocked
+                  ? "bg-rose-50"
+                  : "bg-emerald-50"
               }`}
-          >
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ${
+                    result.blocked
+                      ? "text-rose-600"
+                      : "text-emerald-600"
+                  }`}
+                >
+                  {result.blocked ? (
+                    <AlertCircle size={23} />
+                  ) : (
+                    <CheckCircle2 size={23} />
+                  )}
+                </div>
 
-            <div className="flex items-center gap-2 text-lg font-bold text-slate-900">
-              {result.blocked ? (
-                <AlertCircle
-                  size={21}
-                  className="text-rose-600"
-                />
-              ) : (
-                <CheckCircle2
-                  size={21}
-                  className="text-emerald-600"
-                />
-              )}
+                <div className="min-w-0">
+                  <p
+                    className={`text-[10px] font-bold uppercase tracking-wider ${
+                      result.blocked
+                        ? "text-rose-600"
+                        : "text-emerald-700"
+                    }`}
+                  >
+                    Import Summary
+                  </p>
 
-              {result.blocked ? "Import stopped" : "Import completed"}
+                  <h2 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl">
+                    {result.blocked
+                      ? "Import stopped"
+                      : "Import completed"}
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-5 text-slate-600 sm:text-sm">
+                    {result.blocked
+                      ? "The import stopped because of a subscription restriction."
+                      : "Your customer import operation has finished."}
+                  </p>
+                </div>
+              </div>
             </div>
 
+            {/* Subscription restriction */}
             {result.blocked && (
               <div
                 role="alert"
-                className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4"
+                className="mx-3 mt-3 flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 sm:mx-5"
               >
-                <div className="flex items-start gap-2">
-                  <AlertCircle
-                    size={18}
-                    className="mt-0.5 shrink-0 text-rose-600"
-                  />
-                  <div>
-                    <h3 className="font-semibold text-rose-800">
-                      Import stopped due to subscription restriction
-                    </h3>
+                <AlertCircle
+                  size={18}
+                  className="mt-0.5 shrink-0 text-rose-600"
+                />
 
-                    <p className="mt-1 text-sm text-rose-700">
-                      {result.blockReason ||
-                        "Your subscription does not allow adding more active customers."}
-                    </p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-rose-800">
+                    Subscription restriction
+                  </h3>
 
-                    <p className="mt-2 text-xs text-rose-600">
-                      {result.inserted} customer
-                      {result.inserted === 1 ? "" : "s"} imported before the
-                      restriction. Remaining rows were not processed.
-                    </p>
-                  </div>
+                  <p className="mt-1 text-xs leading-5 text-rose-700">
+                    {result.blockReason ||
+                      "Your subscription does not allow adding more active customers."}
+                  </p>
+
+                  <p className="mt-2 text-[11px] leading-5 text-rose-600">
+                    {result.inserted} customer
+                    {result.inserted === 1 ? "" : "s"} imported before
+                    the restriction. Remaining rows were not processed.
+                  </p>
                 </div>
               </div>
             )}
 
+            {/* Refresh warning */}
             {refreshWarning && (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="mx-3 mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 sm:mx-5">
                 {refreshWarning}
               </div>
             )}
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-
-              <div className="rounded-xl bg-emerald-50 p-4">
-                <p className="text-xs text-emerald-700">
-                  Added
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-emerald-800">
+            {/* Result stats */}
+            <div className="grid grid-cols-1 gap-2.5 p-3.5 sm:grid-cols-3 sm:gap-3 sm:p-5">
+              <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 sm:block">
+                <div>
+                  <p className="text-xs font-semibold text-emerald-700">
+                    Added
+                  </p>
+                  <p className="mt-1 text-[11px] text-emerald-600">
+                    Successfully imported
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-emerald-800 tabular-nums sm:mt-3">
                   {result.inserted}
                 </p>
               </div>
 
-              <div className="rounded-xl bg-amber-50 p-4">
-                <p className="text-xs text-amber-700">
-                  Skipped duplicates
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-amber-800">
+              <div className="flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/70 p-4 sm:block">
+                <div>
+                  <p className="text-xs font-semibold text-amber-700">
+                    Skipped
+                  </p>
+                  <p className="mt-1 text-[11px] text-amber-600">
+                    Duplicate records
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-amber-800 tabular-nums sm:mt-3">
                   {result.skipped}
                 </p>
               </div>
 
-              <div className="rounded-xl bg-rose-50 p-4">
-                <p className="text-xs text-rose-700">
-                  Invalid rows
-                </p>
-
-                <p className="mt-1 text-2xl font-bold text-rose-800">
+              <div className="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50/70 p-4 sm:block">
+                <div>
+                  <p className="text-xs font-semibold text-rose-700">
+                    Invalid
+                  </p>
+                  <p className="mt-1 text-[11px] text-rose-600">
+                    Rows not imported
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-rose-800 tabular-nums sm:mt-3">
                   {result.invalid}
                 </p>
               </div>
-
             </div>
 
+            {/* Rows not imported */}
             {(result.skippedRows?.length > 0 ||
               result.invalidRows?.length > 0) && (
-                <div className="mt-5 space-y-3">
-                  <h3 className="font-semibold text-slate-800">
-                    Rows not imported
-                  </h3>
+              <div className="border-t border-slate-100 p-3.5 sm:p-5">
+                <h3 className="text-sm font-bold text-slate-800">
+                  Rows not imported
+                </h3>
 
+                <div className="mt-3 space-y-2">
                   {[
                     ...(result.skippedRows || []).map((row) => ({
                       ...row,
@@ -805,32 +1256,65 @@ export default function BulkCustomerImportPage() {
                   ].map((row, index) => (
                     <div
                       key={`${row.type}-${row.rowNumber}-${index}`}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                      className="flex flex-col gap-1.5 rounded-xl border border-slate-100 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <span className="font-medium text-slate-700">
-                        Row {row.rowNumber}:{" "}
-                        {row.name || "Unnamed customer"}
-                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800">
+                          Row {row.rowNumber}:{" "}
+                          {row.name || "Unnamed customer"}
+                        </p>
 
-                      <span className="text-slate-500">
-                        {row.type} — {row.reason}
+                        <p className="mt-1 break-words text-[11px] leading-5 text-slate-500">
+                          {row.reason}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`self-start rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                          row.type === "Skipped"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-rose-100 text-rose-800"
+                        }`}
+                      >
+                        {row.type}
                       </span>
                     </div>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
 
-            <button
-              type="button"
-              onClick={() => navigate("/customers")}
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
-            >
-              <Users size={16} />
-              Back to Customers
-            </button>
+            {/* Result actions */}
+            <div className="flex flex-col gap-2 border-t border-slate-100 p-3.5 sm:flex-row sm:justify-between sm:p-5">
+              <button
+                type="button"
+                onClick={() => navigate("/customers")}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-800 px-5 py-3 text-sm font-bold text-white transition hover:bg-teal-900 sm:w-auto"
+              >
+                <Users size={17} />
+                Back to Customers
+                <ArrowRight size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={clearFile}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+              >
+                <RefreshCw size={16} />
+                Import Another File
+              </button>
+            </div>
           </section>
         )}
 
+        {/* FOOTER */}
+        <footer className="flex flex-wrap items-center justify-center gap-2 pb-3 pt-1 text-center text-[10px] font-medium text-slate-400 sm:text-xs">
+          <ShieldCheck size={14} className="text-teal-600" />
+          <span>Amrit Jal</span>
+          <span>·</span>
+          <span>Customer Records Management</span>
+        </footer>
       </div>
     </main>
   );

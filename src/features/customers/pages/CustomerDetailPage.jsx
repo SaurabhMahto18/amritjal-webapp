@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -31,7 +31,6 @@ import {
 import { supabase } from "../../../lib/supabase";
 import { getInvoices } from "../../invoices/services/invoiceService";
 
-import { useCustomers } from "../hooks/useCustomers";
 import { customerService } from "../services/customerService";
 import deliveryService from "../../deliveries/services/deliveryService";
 
@@ -87,6 +86,148 @@ function formatDate(value) {
     year: "numeric",
   });
 }
+
+// Fetch secondary customer data independently so they can start at the same time
+// as the customer profile request. Keep the existing service normalization intact.
+async function fetchCustomerInvoices(customerId) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError) throw authError;
+  if (!user) throw new Error("Please log in to view customer invoices.");
+
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("id")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (businessError) throw businessError;
+  if (!business?.id) throw new Error("Business account was not found.");
+
+  const allInvoices = await getInvoices(business.id);
+
+  return (Array.isArray(allInvoices) ? allInvoices : [])
+    .filter((invoice) => String(invoice.customer_id) === String(customerId))
+    .map((invoice) => ({
+      ...invoice,
+      invoiceNumber: invoice.invoice_number,
+      invoiceDate: invoice.invoice_date,
+      startDate: invoice.period_start,
+      endDate: invoice.period_end,
+      totalAmount: Number(invoice.total_amount || 0),
+      amountToPay: Number(invoice.total_amount || 0),
+      paidAmount: Number(invoice.amount_paid || 0),
+      additionalCharges: Number(invoice.subtotal || 0),
+      discount: Number(invoice.discount_amount || 0),
+      status: invoice.status,
+    }));
+}
+
+async function fetchCustomerDeliveries(customerId) {
+  const [records, products] = await Promise.all([
+    deliveryService.getAll({ customerId }),
+    deliveryService.getProducts(),
+  ]);
+
+  const productNames = new Map(
+    (products || []).map((product) => [product.id, product.name])
+  );
+
+  return (records || []).map((delivery) => ({
+    ...delivery,
+    items: (delivery.items || []).map((item) => ({
+      ...item,
+      productName:
+        productNames.get(item.productId) ||
+        item.productName ||
+        item.productId ||
+        "Product",
+    })),
+  }));
+}
+
+
+async function fetchCustomerUnbalancedProducts(customerId, businessId) {
+  if (!customerId || !businessId) {
+    throw new Error("Customer or business information is missing.");
+  }
+
+  // Read only this customer's delivered and returned jar movements.
+  const { data: movements, error: movementError } = await supabase
+    .from("jar_transactions")
+    .select("product_id, movement_type, quantity")
+    .eq("business_id", businessId)
+    .eq("customer_id", customerId)
+    .in("movement_type", ["delivered", "returned"]);
+
+  if (movementError) throw movementError;
+
+  const totals = new Map();
+
+  for (const movement of movements || []) {
+    const productId = movement.product_id;
+    if (!productId) continue;
+
+    if (!totals.has(productId)) {
+      totals.set(productId, {
+        totalDelivered: 0,
+        totalReturned: 0,
+      });
+    }
+
+    const current = totals.get(productId);
+    const quantity = Number(movement.quantity || 0);
+
+    if (!Number.isFinite(quantity)) continue;
+
+    if (movement.movement_type === "delivered") {
+      current.totalDelivered += quantity;
+    } else if (movement.movement_type === "returned") {
+      current.totalReturned += quantity;
+    }
+  }
+
+  const productIds = [...totals.keys()];
+
+  if (productIds.length === 0) return [];
+
+  // Fetch product names and units in one query.
+  const { data: productRows, error: productError } = await supabase
+    .from("products")
+    .select("id, name, unit")
+    .eq("business_id", businessId)
+    .in("id", productIds);
+
+  if (productError) throw productError;
+
+  const productMap = new Map(
+    (productRows || []).map((product) => [product.id, product])
+  );
+
+  return productIds
+    .map((productId) => {
+      const total = totals.get(productId);
+      const product = productMap.get(productId);
+
+      return {
+        id: productId,
+        productId,
+        name: product?.name || "Unknown Product",
+        productName: product?.name || "Unknown Product",
+        unit: product?.unit || "jar",
+        totalDelivered: total.totalDelivered,
+        totalReturned: total.totalReturned,
+        // Alias supports the existing customer-tab component.
+        totalReceived: total.totalReturned,
+        balance: total.totalDelivered - total.totalReturned,
+      };
+    })
+    .sort((a, b) => a.productName.localeCompare(b.productName));
+}
+
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100";
@@ -699,13 +840,15 @@ function CustomerProducts({
 
 export default function CustomerDetailPage() {
   const { customerId } = useParams();
-  const { getCustomerById } = useCustomers();
 
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [activeSection, setActiveSection] = useState("Profile");
   const [activeTab, setActiveTab] = useState("overview");
+  // Date requested from Monthly Card; consumed by CustomerDeliverySection.
+  const [createDeliveryDate, setCreateDeliveryDate] = useState("");
+  const [editDeliveryDate, setEditDeliveryDate] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const [assignedProducts, setAssignedProducts] = useState([]);
 
@@ -781,103 +924,9 @@ export default function CustomerDetailPage() {
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState("");
 
-  // Load invoices belonging to this customer.
-  const loadCustomerInvoices = useCallback(async () => {
-    if (!customer?.id) {
-      setCustomerInvoices([]);
-      setInvoicesError("");
-      setInvoicesLoading(false);
-      return;
-    }
-
-    setInvoicesLoading(true);
-    setInvoicesError("");
-
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError) throw authError;
-      if (!user) {
-        throw new Error("Please log in to view customer invoices.");
-      }
-
-      const { data: business, error: businessError } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (businessError) throw businessError;
-      if (!business?.id) {
-        throw new Error("Business account was not found.");
-      }
-
-      const allInvoices = await getInvoices(business.id);
-
-      const normalizedInvoices = (Array.isArray(allInvoices) ? allInvoices : [])
-        .filter(
-          (invoice) =>
-            String(invoice.customer_id) === String(customer.id)
-        )
-        .map((invoice) => ({
-          ...invoice,
-          invoiceNumber: invoice.invoice_number,
-          invoiceDate: invoice.invoice_date,
-          startDate: invoice.period_start,
-          endDate: invoice.period_end,
-          totalAmount: Number(invoice.total_amount || 0),
-          amountToPay: Number(invoice.total_amount || 0),
-          paidAmount: Number(invoice.amount_paid || 0),
-          additionalCharges: Number(invoice.subtotal || 0),
-          discount: Number(invoice.discount_amount || 0),
-          status: invoice.status,
-        }));
-
-      setCustomerInvoices(normalizedInvoices);
-    } catch (error) {
-      console.error("Unable to load customer invoices:", error);
-      setInvoicesError(
-        error?.message || "Unable to load customer invoices."
-      );
-      setCustomerInvoices([]);
-    } finally {
-      setInvoicesLoading(false);
-    }
-  }, [customer?.id]);
-
-  useEffect(() => {
-    void loadCustomerInvoices();
-  }, [loadCustomerInvoices]);
-
-  // Load assigned products
-  useEffect(() => {
-    let active = true;
-
-    async function loadAssignedProducts() {
-      if (!customer?.id) {
-        setAssignedProducts([]);
-        return;
-      }
-
-      try {
-        const result = await customerService.getAssignedProducts(customer.id);
-        if (active) setAssignedProducts(result || []);
-      } catch (error) {
-        console.error("Unable to load assigned products:", error);
-        if (active) setAssignedProducts([]);
-      }
-    }
-
-    void loadAssignedProducts();
-
-    return () => {
-      active = false;
-    };
-  }, [customer?.id]);
-
+  // Delivery requests are de-duplicated when both the section callback and
+  // the service update event fire for the same save operation.
+  const deliveryRequestRef = useRef(null);
 
   const loadCustomerDeliveries = useCallback(async () => {
     if (!customer?.id) {
@@ -885,46 +934,155 @@ export default function CustomerDetailPage() {
       return;
     }
 
-    setDeliveriesLoading(true);
+    if (deliveryRequestRef.current) {
+      return deliveryRequestRef.current;
+    }
+
     setDeliveriesError("");
+    // Do not blank an already-visible delivery history during background refresh.
+    if (customerDeliveries.length === 0) setDeliveriesLoading(true);
+
+    const request = fetchCustomerDeliveries(customer.id);
+    deliveryRequestRef.current = request;
 
     try {
-      const [records, products] = await Promise.all([
-        deliveryService.getAll({ customerId: customer.id }),
-        deliveryService.getProducts(),
-      ]);
-
-      const productNames = new Map(
-        (products || []).map((product) => [product.id, product.name])
-      );
-
-      const formattedRecords = (records || []).map((delivery) => ({
-        ...delivery,
-        items: (delivery.items || []).map((item) => ({
-          ...item,
-          productName:
-            productNames.get(item.productId) ||
-            item.productName ||
-            item.productId ||
-            "Product",
-        })),
-      }));
-
-      setCustomerDeliveries(formattedRecords);
+      const records = await request;
+      setCustomerDeliveries(records);
+      setDeliveriesError("");
     } catch (error) {
       console.error("Unable to load customer deliveries:", error);
       setDeliveriesError(
         error?.message || "Unable to load delivery records."
       );
     } finally {
+      if (deliveryRequestRef.current === request) {
+        deliveryRequestRef.current = null;
+      }
       setDeliveriesLoading(false);
     }
-  }, [customer?.id]);
+  }, [customer?.id, customerDeliveries.length]);
 
-  // Refresh when delivery is saved/deleted or browser regains focus
+  // Start every customer-page data request together. The main profile can
+  // render as soon as it arrives; invoices and deliveries finish in parallel
+  // and update their own sections without blocking navigation.
   useEffect(() => {
-    void loadCustomerDeliveries();
+    let active = true;
 
+    const isValidUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        customerId || ""
+      );
+
+    if (!isValidUUID) {
+      setCustomer(null);
+      setLoadError(
+        "Invalid customer ID. Please open a valid customer record."
+      );
+      setLoading(false);
+      setAssignedProducts([]);
+      setCustomerInvoices([]);
+      setCustomerDeliveries([]);
+      setInvoicesLoading(false);
+      setDeliveriesLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setLoading(true);
+    setLoadError("");
+    setCustomer(null);
+    setAssignedProducts([]);
+    setCustomerInvoices([]);
+    setCustomerDeliveries([]);
+    setInvoicesLoading(true);
+    setInvoicesError("");
+    setDeliveriesLoading(true);
+    setDeliveriesError("");
+
+    // Fire all requests immediately instead of waiting for the profile request.
+    void customerService.getById(customerId)
+      .then((result) => {
+        if (!active) return;
+        if (result) {
+          setCustomer(result);
+          setLoadError("");
+        } else {
+          setCustomer(null);
+          setLoadError("This customer could not be found.");
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load customer:", error);
+        if (active) {
+          setCustomer(null);
+          setLoadError(
+            error?.message || "Unable to load customer details."
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    void customerService
+      .getAssignedProducts(customerId)
+      .then((result) => {
+        if (active) setAssignedProducts(result || []);
+      })
+      .catch((error) => {
+        console.error("Unable to load assigned products:", error);
+        if (active) setAssignedProducts([]);
+      });
+
+    void fetchCustomerInvoices(customerId)
+      .then((invoices) => {
+        if (active) setCustomerInvoices(invoices);
+      })
+      .catch((error) => {
+        console.error("Unable to load customer invoices:", error);
+        if (active) {
+          setInvoicesError(
+            error?.message || "Unable to load customer invoices."
+          );
+          setCustomerInvoices([]);
+        }
+      })
+      .finally(() => {
+        if (active) setInvoicesLoading(false);
+      });
+
+    const initialDeliveryRequest = fetchCustomerDeliveries(customerId);
+    deliveryRequestRef.current = initialDeliveryRequest;
+
+    void initialDeliveryRequest
+      .then((records) => {
+        if (active) setCustomerDeliveries(records);
+      })
+      .catch((error) => {
+        console.error("Unable to load customer deliveries:", error);
+        if (active) {
+          setDeliveriesError(
+            error?.message || "Unable to load delivery records."
+          );
+          setCustomerDeliveries([]);
+        }
+      })
+      .finally(() => {
+        if (deliveryRequestRef.current === initialDeliveryRequest) {
+          deliveryRequestRef.current = null;
+        }
+        if (active) setDeliveriesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [customerId, retryKey]);
+
+  // Refresh delivery history after a delivery mutation. Avoid refreshing simply
+  // because the browser window regains focus; that caused needless network work.
+  useEffect(() => {
     const handleDeliveryUpdate = () => {
       void loadCustomerDeliveries();
     };
@@ -934,72 +1092,13 @@ export default function CustomerDetailPage() {
       handleDeliveryUpdate
     );
 
-    window.addEventListener("focus", handleDeliveryUpdate);
-
     return () => {
       window.removeEventListener(
         "amrit-jal-deliveries-updated",
         handleDeliveryUpdate
       );
-
-      window.removeEventListener("focus", handleDeliveryUpdate);
     };
   }, [loadCustomerDeliveries]);
-
-  // Load customer profile
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadCustomer() {
-      setLoading(true);
-      setLoadError("");
-      setCustomer(null);
-
-      // Validate UUID before making a database request.
-      const isValidUUID =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          customerId || ""
-        );
-
-      if (!isValidUUID) {
-        setLoadError(
-          "Invalid customer ID. Please open a valid customer record."
-        );
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const result = await getCustomerById(customerId);
-
-        if (!isMounted) return;
-
-        if (result) {
-          setCustomer(result);
-        } else {
-          setLoadError("This customer could not be found.");
-        }
-      } catch (error) {
-        console.error("Failed to load customer:", error);
-
-        if (isMounted) {
-          setLoadError(
-            error?.message || "Unable to load customer details."
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadCustomer();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [customerId, getCustomerById, retryKey]);
 
   if (loading) return <LoadingState />;
 
@@ -1312,7 +1411,24 @@ export default function CustomerDetailPage() {
         return (
           <CustomerMonthlyCardSection
             customer={customer}
-            transactions={[]}
+            transactions={customerDeliveries}
+            loading={deliveriesLoading}
+            error={deliveriesError}
+            isArchived={isArchived}
+            onAddDelivery={(date) => {
+              if (isArchived || !date) return;
+              setCreateDeliveryDate(date);
+              // Delivery form is owned by CustomerDeliverySection, so switch
+              // to that tab before passing the selected date to it.
+              setActiveSection("Deliveries");
+              setActiveTab("deliveries");
+            }}
+            onEditDelivery={(date) => {
+              if (isArchived || !date) return;
+              setEditDeliveryDate(date);
+              setActiveSection("Deliveries");
+              setActiveTab("deliveries");
+            }}
           />
         );
 
@@ -1327,6 +1443,11 @@ export default function CustomerDetailPage() {
             error={deliveriesError}
             onRefresh={loadCustomerDeliveries}
             isArchived={isArchived}
+            createDeliveryDate={createDeliveryDate}
+            onCreateDeliveryHandled={() => setCreateDeliveryDate("")}
+            assignedProducts={assignedProducts}
+            editDeliveryDate={editDeliveryDate}
+            onEditDeliveryHandled={() => setEditDeliveryDate("")}
           />
         );
 
@@ -1403,18 +1524,19 @@ export default function CustomerDetailPage() {
       }
       sidebar={
         activeTab === "overview" ? (
-          <aside className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <h2 className="font-bold text-slate-900">
+          <aside className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
+            <div className="border-b border-slate-100 px-3 py-2.5 sm:px-5 sm:py-4">
+              <h2 className="text-sm font-bold text-slate-900 sm:text-base">
                 Details
               </h2>
 
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">
                 Customer details and settings
               </p>
             </div>
 
-            <nav className="divide-y divide-slate-100">
+            {/* Mobile: compact horizontal menu. Desktop: vertical sidebar. */}
+            <nav className="flex gap-1.5 overflow-x-auto p-2 [scrollbar-width:thin] sm:gap-2 sm:p-3 lg:flex-col lg:gap-0 lg:overflow-visible lg:p-0 lg:divide-y lg:divide-slate-100">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const selected = activeSection === item.section;
@@ -1425,38 +1547,42 @@ export default function CustomerDetailPage() {
                     type="button"
                     onClick={() => handleSectionChange(item.section)}
                     aria-current={selected ? "page" : undefined}
-                    className={`flex w-full items-center gap-3 px-4 py-4 text-left transition ${selected
-                      ? "bg-teal-50"
-                      : "bg-white hover:bg-slate-50"
-                      }`}
+                    title={item.name}
+                    className={`flex min-w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center transition sm:min-w-[88px] sm:px-3 sm:py-2.5 lg:w-full lg:min-w-0 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-none lg:border-0 lg:px-4 lg:py-3.5 lg:text-left ${
+                      selected
+                        ? "border-teal-200 bg-teal-50 text-teal-900 lg:bg-teal-50"
+                        : "border-slate-100 bg-white text-slate-700 hover:bg-slate-50 lg:border-transparent"
+                    }`}
                   >
                     <span
-                      className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected
-                        ? "bg-teal-100 text-teal-800"
-                        : "bg-slate-50 text-slate-500"
-                        }`}
+                      className={`flex size-7 shrink-0 items-center justify-center rounded-lg sm:size-8 lg:size-10 lg:rounded-xl ${
+                        selected
+                          ? "bg-teal-100 text-teal-800"
+                          : "bg-slate-50 text-slate-500"
+                      }`}
                     >
-                      <Icon size={19} />
+                      <Icon size={15} className="sm:hidden" />
+                      <Icon size={17} className="hidden sm:block lg:hidden" />
+                      <Icon size={19} className="hidden lg:block" />
                     </span>
 
-                    <span className="min-w-0 flex-1">
+                    <span className="min-w-0 lg:flex-1">
                       <span
-                        className={`block text-sm font-semibold ${selected
-                          ? "text-teal-900"
-                          : "text-slate-800"
-                          }`}
+                        className={`block max-w-[76px] truncate text-[10px] font-semibold leading-tight sm:max-w-[88px] sm:text-[11px] lg:max-w-none lg:text-sm ${
+                          selected ? "text-teal-900" : "text-slate-800"
+                        }`}
                       >
                         {item.name}
                       </span>
 
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      <span className="mt-1 hidden text-xs leading-5 text-slate-500 lg:block">
                         {item.description}
                       </span>
                     </span>
 
                     <ChevronRight
                       size={17}
-                      className="shrink-0 text-slate-400"
+                      className="hidden shrink-0 text-slate-400 lg:block"
                     />
                   </button>
                 );

@@ -39,15 +39,15 @@ function SummaryCard({ label, value, icon: Icon, tone }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <span className={`flex size-9 items-center justify-center rounded-lg ${styles[tone]}`}>
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 text-[11px] font-medium leading-4 text-slate-500 sm:text-sm">{label}</p>
+        <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9 ${styles[tone]}`}>
           <Icon size={18} />
         </span>
       </div>
 
-      <p className="mt-3 break-words text-xl font-bold text-slate-900">
+      <p className="mt-2 break-words text-base font-bold leading-tight text-slate-900 sm:mt-3 sm:text-xl">
         {value}
       </p>
     </div>
@@ -105,20 +105,20 @@ export default function CustomerDeliveryHistory({
   });
 
   return (
-    <section className="space-y-4">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="min-w-0 space-y-2.5 sm:space-y-4">
+      <header className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 sm:size-10 sm:rounded-xl">
               <Droplets size={21} />
             </div>
 
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-base font-bold text-slate-900 sm:text-lg">
               Delivery History
             </h2>
           </div>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-slate-500 sm:mt-2 sm:text-sm">
             Review this customer's recorded deliveries and amounts.
           </p>
         </div>
@@ -128,10 +128,10 @@ export default function CustomerDeliveryHistory({
             type="button"
             onClick={onRetry}
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:min-h-10 sm:gap-2 sm:rounded-xl sm:px-4 sm:text-sm"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-            Refresh
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            <span>Refresh</span>
           </button>
         )}
       </header>
@@ -159,7 +159,7 @@ export default function CustomerDeliveryHistory({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
         <SummaryCard
           label="Total Deliveries"
           value={safeDeliveries.length}
@@ -183,7 +183,7 @@ export default function CustomerDeliveryHistory({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-3 sm:px-5 sm:py-4">
           <div>
             <h3 className="font-bold text-slate-900">Delivery Register</h3>
             <p className="mt-1 text-xs text-slate-500">
@@ -208,7 +208,7 @@ export default function CustomerDeliveryHistory({
           <EmptyState />
         ) : (
           <>
-            {/* Mobile view */}
+            {/* Dedicated concise mobile view */}
             <div className="divide-y divide-slate-100 md:hidden">
               {sortedDeliveries.map((delivery, index) => {
                 const quantity = Number(
@@ -227,50 +227,31 @@ export default function CustomerDeliveryHistory({
                 return (
                   <article
                     key={delivery.id ?? `${delivery.delivery_date ?? delivery.date}-${index}`}
-                    className="p-4"
+                    className="flex min-w-0 items-center justify-between gap-3 px-3 py-3"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                          <Droplets size={19} />
-                        </div>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+                        <Droplets size={17} />
+                      </span>
 
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {formatDate(delivery.delivery_date ?? delivery.date)}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {quantity} {quantity === 1 ? "jar" : "jars"} delivered
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="shrink-0 font-bold text-slate-900">
-                        {currency(amount)}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3">
-                      <div>
-                        <p className="text-xs text-slate-500">Price per jar</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {currency(rate)}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {formatDate(delivery.delivery_date ?? delivery.date)}
                         </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">Quantity</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {quantity}
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          {quantity} {quantity === 1 ? "jar" : "jars"} × {currency(rate)}
                         </p>
+                        {delivery.notes && (
+                          <p className="mt-0.5 truncate text-[10px] text-slate-400">
+                            {delivery.notes}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {delivery.notes && (
-                      <p className="mt-3 break-words text-sm leading-5 text-slate-500">
-                        {delivery.notes}
-                      </p>
-                    )}
+                    <p className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                      {currency(amount)}
+                    </p>
                   </article>
                 );
               })}

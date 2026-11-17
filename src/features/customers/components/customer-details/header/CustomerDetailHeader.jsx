@@ -66,28 +66,40 @@ export default function CustomerDetailHeader({
   return (
     <div className="w-full space-y-4">
       {/* Customer summary card */}
-      
-<section className="block w-full min-w-full rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
-  <div className="flex w-full flex-wrap items-center justify-between gap-4">
 
-    <div className="flex flex-wrap items-center gap-5 sm:gap-7">
-      <Metric label="Balance Jar" value={balanceJars} tone="blue" />
-      <Metric label="Due Amount" value={dueAmount} tone="red" />
-      <Metric label="Past Due" value={pastDue} />
-      <Metric label="Current Due" value={currentDue} />
-    </div>
+      {/* Compact account summary */}
+      <section
+        aria-label="Customer account summary"
+        className="w-full min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5"
+      >
+        <div className="mb-2.5 flex items-center justify-between sm:hidden">
+          <p className="text-xs font-semibold text-slate-700">Account Summary</p>
+          <Link
+            to={editPath}
+            title="Edit customer"
+            aria-label="Edit customer"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+          >
+            <Pencil size={15} />
+          </Link>
+        </div>
 
-    <Link
-      to={editPath}
-      title="Edit customer"
-      aria-label="Edit customer"
-      className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-    >
-      <Pencil size={19} />
-    </Link>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-5">
+          <Metric label="Balance Jar" value={balanceJars} tone="blue" />
+          <Metric label="Due Amount" value={dueAmount} tone="red" />
+          <Metric label="Past Due" value={pastDue} />
+          <Metric label="Current Due" value={currentDue} />
 
-  </div>
-</section>
+          <Link
+            to={editPath}
+            title="Edit customer"
+            aria-label="Edit customer"
+            className="hidden size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:flex"
+          >
+            <Pencil size={17} />
+          </Link>
+        </div>
+      </section>
 
 
       {/* Horizontal customer navigation */}
@@ -105,11 +117,10 @@ export default function CustomerDetailHeader({
                 type="button"
                 onClick={() => onTabChange?.(id)}
                 aria-current={selected ? "page" : undefined}
-                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${
-                  selected
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${selected
                     ? "bg-slate-950 text-white shadow-sm"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                }`}
+                  }`}
               >
                 <Icon size={17} strokeWidth={1.8} />
                 <span>{label}</span>

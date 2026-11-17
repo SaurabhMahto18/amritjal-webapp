@@ -1,10 +1,11 @@
-
 import { UserRound } from "lucide-react";
 
+const amountFormatter = new Intl.NumberFormat("en-IN", {
+  maximumFractionDigits: 2,
+});
+
 const formatAmount = (value) =>
-  new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: 2,
-  }).format(Number(value) || 0);
+  amountFormatter.format(Number(value) || 0);
 
 function SummaryMetric({ label, value, tone = "neutral" }) {
   const tones = {
@@ -14,13 +15,13 @@ function SummaryMetric({ label, value, tone = "neutral" }) {
   };
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <span className="whitespace-nowrap text-sm text-slate-600">
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-2 sm:justify-start sm:gap-2 sm:rounded-none sm:bg-transparent sm:px-0 sm:py-0">
+      <span className="min-w-0 truncate text-[11px] font-medium text-slate-500 sm:text-sm">
         {label}
       </span>
 
       <span
-        className={`min-w-10 rounded-full px-3 py-1.5 text-center text-xs font-semibold tabular-nums ${tones[tone]}`}
+        className={`shrink-0 rounded-full px-2.5 py-1 text-center text-[11px] font-semibold tabular-nums sm:min-w-10 sm:px-3 sm:py-1.5 sm:text-xs ${tones[tone]}`}
       >
         {value}
       </span>
@@ -41,11 +42,11 @@ export default function CustomerDetailSummary({
   return (
     <section
       aria-label="Customer account summary"
-      className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5"
+      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5"
     >
-      {/* Customer Identity */}
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-500">
+      {/* Compact customer identity */}
+      <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-500 sm:size-14">
           {customer?.profileImage ? (
             <img
               src={customer.profileImage}
@@ -53,40 +54,39 @@ export default function CustomerDetailSummary({
               className="size-full object-cover"
             />
           ) : (
-            <UserRound size={27} />
+            <UserRound size={21} className="sm:hidden" />
+          )}
+          {!customer?.profileImage && (
+            <UserRound size={27} className="hidden sm:block" />
           )}
         </div>
 
-        <div className="min-w-0">
-          <h1 className="break-words text-base font-bold text-slate-900 sm:text-lg">
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-sm font-bold leading-5 text-slate-900 sm:break-words sm:text-lg">
             {customerName}
           </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
-            · {customerGroup}
+          <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:mt-1 sm:text-sm">
+            {customerGroup}
           </p>
         </div>
       </div>
 
-      {/* Account Metrics */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:justify-end">
+      {/* Minimal 2-column metrics on phones */}
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-6 sm:gap-y-3">
         <SummaryMetric
           label="Balance Jar"
           value={formatAmount(balanceJars)}
           tone="info"
         />
-
         <SummaryMetric
           label="Due Amount"
           value={formatAmount(dueAmount)}
           tone="danger"
         />
-
         <SummaryMetric
           label="Past Due"
           value={formatAmount(pastDue)}
         />
-
         <SummaryMetric
           label="Current Due"
           value={formatAmount(currentDue)}

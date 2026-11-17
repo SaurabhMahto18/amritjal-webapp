@@ -1,18 +1,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Plus,
   Pencil,
-  RefreshCw,
-  Package,
   CalendarDays,
-  IndianRupee,
-  Truck,
   X,
   LoaderCircle,
   AlertCircle,
+  Plus,
+  Minus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import deliveryService from "../../../../deliveries/services/deliveryService";
+import { customerService } from "../../../services/customerService";
 
 const currency = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -56,6 +56,10 @@ export default function CustomerDeliverySection({
   error = "",
   onRefresh,
   isArchived = false,
+  createDeliveryDate = "",
+  onCreateDeliveryHandled,
+  editDeliveryDate = "",
+  onEditDeliveryHandled,
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState(null);
@@ -116,24 +120,68 @@ export default function CustomerDeliverySection({
     }
   };
 
-  const openCreate = async () => {
+  const openCreate = async (selectedDate = today()) => {
     if (isArchived) return;
 
+    const targetDate = selectedDate || today();
+
     setEditingDelivery(null);
-    setDeliveryDate(today());
+    setDeliveryDate(targetDate);
     setShift("morning");
     setNotes("");
     setItems([]);
     setFormError("");
     setModalOpen(true);
+    setProductsLoading(true);
 
-    const { productRows, planByProduct } = await loadProducts(today());
+    try {
+      // Use the same assignment source as the Customer Products section.
+      const assignedProducts =
+        await customerService.getAssignedProducts(customer.id);
 
-    setItems(
-      productRows
-        .filter((product) => planByProduct.has(product.id))
-        .map((product) => emptyItem(product, planByProduct.get(product.id)))
-    );
+      const activeAssignments = (assignedProducts || []).filter(
+        (assignment) =>
+          assignment.productStatus === "active" &&
+          assignment.productId
+      );
+
+      // Keep a normalized product list in state for consistency with Edit.
+      setProducts(
+        activeAssignments.map((assignment) => ({
+          id: assignment.productId,
+          name: assignment.productName,
+          sale_price: Number(assignment.salePrice || 0),
+          is_returnable_jar: Boolean(assignment.isReturnableJar),
+        }))
+      );
+
+      setItems(
+        activeAssignments.map((assignment) => ({
+          productId: assignment.productId,
+          productName: assignment.productName,
+          quantity: Number(assignment.defaultQuantity || 0),
+          returned: 0,
+          unitPrice: Number(
+            assignment.unitPrice ?? assignment.salePrice ?? 0
+          ),
+          isReturnableJar: Boolean(assignment.isReturnableJar),
+        }))
+      );
+
+      if (activeAssignments.length === 0) {
+        setFormError(
+          "No active products are assigned to this customer. Check Customer Products."
+        );
+      }
+    } catch (err) {
+      setProducts([]);
+      setItems([]);
+      setFormError(
+        err?.message || "Unable to load assigned customer products."
+      );
+    } finally {
+      setProductsLoading(false);
+    }
   };
 
   const openEdit = async (delivery) => {
@@ -200,6 +248,22 @@ export default function CustomerDeliverySection({
     );
   };
 
+  const resetQuantities = () => {
+    setItems((current) =>
+      current.map((item) => ({ ...item, quantity: 0, returned: 0 }))
+    );
+  };
+
+  const adjustItem = (productId, field, amount) => {
+    setItems((current) =>
+      current.map((item) => {
+        if (item.productId !== productId) return item;
+        const nextValue = Math.max(0, Number(item[field] || 0) + amount);
+        return { ...item, [field]: nextValue };
+      })
+    );
+  };
+
   const handleSave = async (event) => {
     event.preventDefault();
     if (!customer?.id || saving || isArchived) return;
@@ -252,6 +316,30 @@ export default function CustomerDeliverySection({
   };
 
   useEffect(() => {
+    if (!createDeliveryDate || isArchived) return;
+    openCreate(createDeliveryDate);
+    onCreateDeliveryHandled?.();
+    // A new request is issued by the parent for each selected day.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createDeliveryDate]);
+
+  useEffect(() => {
+    if (!editDeliveryDate || isArchived) return;
+
+    const matchingDelivery = (deliveries || []).find(
+      (delivery) =>
+        String(delivery.date || "").slice(0, 10) ===
+        String(editDeliveryDate).slice(0, 10)
+    );
+
+    if (matchingDelivery) {
+      openEdit(matchingDelivery);
+      onEditDeliveryHandled?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editDeliveryDate, deliveries]);
+
+  useEffect(() => {
     if (!modalOpen) return undefined;
 
     const handleEscape = (event) => {
@@ -274,29 +362,6 @@ export default function CustomerDeliverySection({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={openCreate}
-            disabled={isArchived}
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus size={17} />
-            Create Delivery
-          </button>
-        </div>
       </header>
 
       {error && (
@@ -306,24 +371,6 @@ export default function CustomerDeliverySection({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard
-          label="Delivered"
-          value={totalDelivered}
-          icon={<Package size={19} />}
-        />
-        <SummaryCard
-          label="Returned"
-          value={totalReturned}
-          icon={<Truck size={19} />}
-        />
-        <SummaryCard
-          label="Delivery Value"
-          value={currency(totalValue)}
-          icon={<IndianRupee size={19} />}
-        />
-      </div>
-
       {loading ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-10 text-sm text-slate-500">
           <LoaderCircle className="animate-spin" size={20} />
@@ -331,23 +378,14 @@ export default function CustomerDeliverySection({
         </div>
       ) : records.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
-          <Package size={30} className="mx-auto text-slate-400" />
+          <CalendarDays size={30} className="mx-auto text-slate-400" />
           <h3 className="mt-3 font-semibold text-slate-900">
             No delivery records yet
           </h3>
           <p className="mt-1 text-sm text-slate-500">
             Create the first delivery for this customer.
           </p>
-          {!isArchived && (
-            <button
-              type="button"
-              onClick={openCreate}
-              className="mt-4 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
-            >
-              <Plus size={16} className="mr-1 inline" />
-              Create Delivery
-            </button>
-          )}
+
         </div>
       ) : (
         <div className="space-y-4">
@@ -431,167 +469,102 @@ export default function CustomerDeliverySection({
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-3 sm:p-5">
-          <div className="my-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {editingDelivery ? "Edit Delivery" : "Create Delivery"}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-2 sm:p-5">
+          <div className="flex max-h-[94dvh] w-full max-w-[640px] flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-[28px]">
+            <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-5 sm:px-7 sm:pt-7">
+              <div className="min-w-0">
+                <h3 className="text-xl font-bold leading-snug text-slate-900 sm:text-2xl">
+                  {customer?.name || "Customer"}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  {customer?.name}
+                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                  {editingDelivery ? "Edit transaction" : `Create transaction for ${formatDate(deliveryDate)}.`}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={saving}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                aria-label="Close"
-              >
-                <X size={20} />
+              <button type="button" onClick={closeModal} disabled={saving}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                aria-label="Close">
+                <X size={25} />
               </button>
             </div>
 
-            <form onSubmit={handleSave}>
-              <div className="max-h-[70vh] space-y-5 overflow-y-auto p-5">
-                {formError && (
-                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                    {formError}
-                  </div>
-                )}
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Delivery Date
-                    <input
-                      type="date"
-                      required
-                      value={deliveryDate}
+            <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 sm:space-y-5 sm:px-6">
+                <div className="grid grid-cols-1 gap-2 rounded-2xl border border-cyan-600/70 p-2 sm:grid-cols-2 sm:gap-3">
+                  <label className="flex min-w-0 items-center gap-2 px-2 py-1.5 text-sm font-semibold text-cyan-700">
+                    <CalendarDays size={21} className="shrink-0" />
+                    <input type="date" required value={deliveryDate}
                       disabled={Boolean(editingDelivery)}
                       onChange={(event) => setDeliveryDate(event.target.value)}
-                      className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 disabled:bg-slate-100"
-                    />
+                      className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-cyan-700 outline-none disabled:opacity-70" />
                   </label>
-
-                  <label className="block text-sm font-medium text-slate-700">
-                    Shift
-                    <select
-                      value={shift}
-                      disabled={Boolean(editingDelivery)}
+                  <label className="flex min-w-0 items-center gap-2 border-t border-slate-100 px-2 py-1.5 text-sm font-semibold text-cyan-700 sm:border-l sm:border-t-0 sm:pl-4">
+                    <select value={shift} disabled={Boolean(editingDelivery)}
                       onChange={(event) => setShift(event.target.value)}
-                      className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 capitalize disabled:bg-slate-100"
-                    >
+                      className="min-w-0 flex-1 appearance-none bg-transparent py-1 text-sm font-semibold capitalize text-cyan-700 outline-none disabled:opacity-70">
                       <option value="morning">Morning</option>
                       <option value="evening">Evening</option>
                       <option value="other">Other</option>
                     </select>
+                    <ChevronDown size={18} className="shrink-0" />
                   </label>
                 </div>
 
+                <p className="px-2 text-sm text-slate-800">
+                  {editingDelivery ? "Update transaction" : "Create transaction"} for <strong>{formatDate(deliveryDate)}</strong>.
+                </p>
+
                 {editingDelivery && (
                   <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-                    Date and shift are locked while editing because the current
-                    database save function identifies a delivery by customer,
-                    date and shift.
+                    Date and shift are locked while editing because the current database save function identifies a delivery by customer, date and shift.
                   </p>
                 )}
 
+                {formError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
+                    <AlertCircle size={17} className="mt-0.5 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
                 {productsLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
+                  <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
                     <LoaderCircle size={20} className="animate-spin" />
                     Loading assigned products...
                   </div>
                 ) : items.length === 0 ? (
-                  <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
-                    No products are assigned to this customer for this date.
-                    Assign products and rates first.
+                  <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                    No products are assigned to this customer. Assign products and rates first.
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-slate-900">
-                      Products
-                    </h4>
-
-                    {items.map((item) => (
-                      <div
-                        key={item.productId}
-                        className="rounded-xl border border-slate-200 p-4"
-                      >
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-semibold text-slate-900">
-                            {item.productName}
-                          </p>
-                          <span className="text-sm text-slate-500">
-                            {currency(item.unitPrice)} / unit
-                          </span>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          <NumberField
-                            label="Delivered"
-                            value={item.quantity}
-                            onChange={(value) =>
-                              updateItem(item.productId, "quantity", value)
-                            }
-                          />
-                          <NumberField
-                            label="Received"
-                            value={item.returned}
-                            onChange={(value) =>
-                              updateItem(item.productId, "returned", value)
-                            }
-                          />
-                          <NumberField
-                            label="Rate (₹)"
-                            value={item.unitPrice}
-                            step="0.01"
-                            onChange={(value) =>
-                              updateItem(item.productId, "unitPrice", value)
-                            }
-                          />
-                        </div>
-
-                        <div className="mt-3 text-right text-sm font-semibold text-slate-800">
-                          Amount: {currency(item.quantity * item.unitPrice)}
-                        </div>
-                      </div>
+                  <div className="space-y-5">
+                    {[
+                      { title: "Assigned products", rows: items.filter((item) => item.isReturnableJar) },
+                      { title: "Other products", rows: items.filter((item) => !item.isReturnableJar) },
+                    ].filter((group) => group.rows.length > 0).map((group, groupIndex) => (
+                      <ProductGroup key={group.title} title={group.title} items={group.rows}
+                        updateItem={updateItem} adjustItem={adjustItem} defaultOpen={groupIndex === 0} />
                     ))}
                   </div>
                 )}
 
-                <label className="block text-sm font-medium text-slate-700">
+                <label className="block px-1 text-sm font-medium text-slate-700">
                   Notes
-                  <textarea
-                    rows={2}
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5"
-                    placeholder="Optional delivery notes"
-                  />
+                  <textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-cyan-600"
+                    placeholder="Optional delivery notes" />
                 </label>
               </div>
 
-              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-4">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={saving}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
+              <div className="grid shrink-0 grid-cols-2 gap-1.5 border-t border-slate-200 bg-white p-3 sm:gap-2 sm:px-6 sm:py-4">
+                <button type="button" onClick={resetQuantities}
                   disabled={saving || productsLoading || items.length === 0}
-                  className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
-                >
-                  {saving && <LoaderCircle size={16} className="animate-spin" />}
-                  {saving
-                    ? "Saving..."
-                    : editingDelivery
-                      ? "Update Delivery"
-                      : "Save Delivery"}
+                  className="min-h-12 border-2 border-cyan-600 bg-white px-3 py-2.5 text-sm font-semibold text-cyan-700 hover:bg-cyan-50 disabled:opacity-50 sm:text-base">
+                  Reset
+                </button>
+                <button type="submit" disabled={saving || productsLoading || items.length === 0}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 bg-cyan-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-cyan-700 disabled:bg-slate-300 sm:text-base">
+                  {saving && <LoaderCircle size={17} className="animate-spin" />}
+                  {saving ? "Submitting..." : editingDelivery ? "Update" : "Submit"}
                 </button>
               </div>
             </form>
@@ -602,14 +575,63 @@ export default function CustomerDeliverySection({
   );
 }
 
-function SummaryCard({ label, value, icon }) {
+function ProductGroup({ title, items, updateItem, adjustItem, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center gap-2 text-sm text-slate-500">
-        {icon}
-        {label}
-      </div>
-      <p className="mt-3 text-2xl font-bold text-slate-900">{value}</p>
+    <section className="space-y-3">
+      <button type="button" onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between px-2 py-1 text-left text-base font-semibold text-slate-900"
+        aria-expanded={open}>
+        {title}
+        {open ? <ChevronUp size={21} className="text-cyan-600" /> : <ChevronDown size={21} className="text-cyan-600" />}
+      </button>
+      {open && (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <article key={item.productId} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h4 className="break-words text-sm font-bold text-slate-900 sm:text-base">{item.productName}</h4>
+                  <p className="mt-1 text-xs text-slate-500">Rate: {currency(item.unitPrice)} / unit</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700">
+                  {currency(item.quantity * item.unitPrice)}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <QuantityStepper label="Delivered" value={item.quantity}
+                  onDecrease={() => adjustItem(item.productId, "quantity", -1)}
+                  onIncrease={() => adjustItem(item.productId, "quantity", 1)}
+                  onChange={(value) => updateItem(item.productId, "quantity", value)} />
+                <QuantityStepper label="Received" value={item.returned}
+                  onDecrease={() => adjustItem(item.productId, "returned", -1)}
+                  onIncrease={() => adjustItem(item.productId, "returned", 1)}
+                  onChange={(value) => updateItem(item.productId, "returned", value)} />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function QuantityStepper({ label, value, onDecrease, onIncrease, onChange }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_38px_54px_38px] items-center gap-1.5">
+      <span className="text-xs font-medium text-slate-700 sm:text-sm">{label}</span>
+      <button type="button" onClick={onDecrease} aria-label={`Decrease ${label}`}
+        className="flex h-10 items-center justify-center rounded-lg bg-cyan-600 text-white hover:bg-cyan-700">
+        <Minus size={19} />
+      </button>
+      <input type="number" min="0" step="1" value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full rounded-lg border-2 border-slate-300 text-center text-base text-slate-900 outline-none focus:border-cyan-600" />
+      <button type="button" onClick={onIncrease} aria-label={`Increase ${label}`}
+        className="flex h-10 items-center justify-center rounded-lg bg-cyan-600 text-white hover:bg-cyan-700">
+        <Plus size={19} />
+      </button>
     </div>
   );
 }
