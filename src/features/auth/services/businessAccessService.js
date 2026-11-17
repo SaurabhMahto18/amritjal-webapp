@@ -2,23 +2,43 @@
 import { supabase } from "../../../lib/supabase/client";
 
 export const businessAccessService = {
+  // ========================================
+  // GET CURRENT USER BUSINESS ACCESS
+  // ========================================
+
   async getCurrentBusinessAccess() {
-    const { data: authData, error: authError } =
-      await supabase.auth.getUser();
+    // Verify authenticated user first.
+    const {
+      data: authData,
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (authError) throw authError;
-
-    if (!authData?.user) {
-      throw new Error("Please sign in to continue.");
+    if (authError) {
+      throw authError;
     }
 
-    const { data, error } = await supabase.rpc(
+    if (!authData?.user) {
+      throw new Error(
+        "Please sign in to continue."
+      );
+    }
+
+    // Fetch business access using secure Supabase RPC.
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
       "get_my_business_access"
     );
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
-    const business = Array.isArray(data) ? data[0] : data;
+    // Handle both array and object responses.
+    const business = Array.isArray(data)
+      ? data[0]
+      : data;
 
     if (!business?.business_id) {
       throw new Error(
@@ -30,12 +50,23 @@ export const businessAccessService = {
       businessId: business.business_id,
       businessName: business.business_name,
       role: business.member_role,
-      isSuspended: Boolean(business.is_suspended),
-      suspensionReason: business.suspension_reason || "",
-      suspendedAt: business.suspended_at || null,
+
+      isSuspended: Boolean(
+        business.is_suspended
+      ),
+
+      suspensionReason:
+        business.suspension_reason || "",
+
+      suspendedAt:
+        business.suspended_at || null,
     };
   },
 };
+
+// ========================================
+// GET CURRENT BUSINESS ID
+// ========================================
 
 export async function getCurrentBusinessId() {
   const access =

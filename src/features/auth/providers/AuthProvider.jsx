@@ -24,6 +24,10 @@ export function AuthProvider({ children }) {
   const [businessAccess, setBusinessAccess] = useState(null);
   const [accessError, setAccessError] = useState("");
 
+  // ========================================
+  // INITIAL SESSION + AUTH LISTENER
+  // ========================================
+
   useEffect(() => {
     let mounted = true;
 
@@ -38,7 +42,9 @@ export function AuthProvider({ children }) {
       } catch (error) {
         console.error("Session load failed:", error.message);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -67,6 +73,10 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // ========================================
+  // REFRESH BUSINESS ACCESS
+  // ========================================
+
   const refreshBusinessAccess = useCallback(async () => {
     if (!user) {
       setBusinessAccess(null);
@@ -88,8 +98,10 @@ export function AuthProvider({ children }) {
       console.error("Business access check failed:", error);
 
       setBusinessAccess(null);
+
       setAccessError(
-        error?.message || "Business access could not be verified."
+        error?.message ||
+          "Business access could not be verified."
       );
 
       return null;
@@ -97,6 +109,10 @@ export function AuthProvider({ children }) {
       setAccessLoading(false);
     }
   }, [user]);
+
+  // ========================================
+  // AUTOMATIC BUSINESS ACCESS REFRESH
+  // ========================================
 
   useEffect(() => {
     if (!user) {
@@ -126,13 +142,63 @@ export function AuthProvider({ children }) {
     };
   }, [user, refreshBusinessAccess]);
 
+  // ========================================
+  // LOGIN
+  // ========================================
+
   const signIn = useCallback((email, password) => {
     return authService.signIn(email, password);
   }, []);
 
-  const signUp = useCallback((email, password) => {
-    return authService.signUp(email, password);
+  // ========================================
+  // SIGNUP WITH EMAIL CONFIRMATION
+  // ========================================
+
+  const signUp = useCallback(
+    (email, password, businessName) => {
+      return authService.signUp(
+        email,
+        password,
+        businessName
+      );
+    },
+    []
+  );
+
+  // ========================================
+  // RESEND CONFIRMATION EMAIL
+  // ========================================
+
+  const resendSignupConfirmation = useCallback((email) => {
+    return authService.resendSignupConfirmation(email);
   }, []);
+
+  // ========================================
+  // CREATE BUSINESS
+  // ========================================
+
+  const createBusinessForCurrentUser = useCallback(
+    async (businessName) => {
+      const result =
+        await authService.createBusinessForCurrentUser(
+          businessName
+        );
+
+      // Immediately refresh business access.
+      const access =
+        await businessAccessService.getCurrentBusinessAccess();
+
+      setBusinessAccess(access);
+      setAccessError("");
+
+      return result;
+    },
+    []
+  );
+
+  // ========================================
+  // LOGOUT
+  // ========================================
 
   const signOut = useCallback(async () => {
     await authService.signOut();
@@ -141,7 +207,12 @@ export function AuthProvider({ children }) {
     setUser(null);
     setBusinessAccess(null);
     setAccessError("");
+    setAccessLoading(false);
   }, []);
+
+  // ========================================
+  // CONTEXT VALUE
+  // ========================================
 
   const value = {
     session,
@@ -154,16 +225,21 @@ export function AuthProvider({ children }) {
     accessLoading,
     accessError,
 
-    isBusinessSuspended:
-      Boolean(businessAccess?.isSuspended),
+    isBusinessSuspended: Boolean(
+      businessAccess?.isSuspended
+    ),
 
-    hasBusinessAccess:
-      Boolean(businessAccess && !businessAccess.isSuspended),
+    hasBusinessAccess: Boolean(
+      businessAccess &&
+        !businessAccess.isSuspended
+    ),
 
     refreshBusinessAccess,
 
     signIn,
     signUp,
+    resendSignupConfirmation,
+    createBusinessForCurrentUser,
     signOut,
   };
 
@@ -173,6 +249,10 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+// ========================================
+// AUTH CONTEXT HOOK
+// ========================================
 
 export function useAuthContext() {
   const context = useContext(AuthContext);
