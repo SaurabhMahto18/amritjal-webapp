@@ -543,7 +543,7 @@ export default function DeliveryBulkEntry({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-3 pb-36 sm:space-y-5 sm:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-[#102C46]">
@@ -794,14 +794,15 @@ export default function DeliveryBulkEntry({
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:items-stretch">
+      {/* Compact summary + action dock: fixed on phones, inline on larger screens */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2.5 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-6px_22px_rgba(15,23,42,0.10)] backdrop-blur sm:static sm:rounded-2xl sm:border sm:bg-white sm:p-4 sm:shadow-lg sm:backdrop-blur-none">
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-3 md:grid-cols-5 md:items-stretch">
           <Summary label="Customers" value={customers.length} />
           <Summary label="Entries" value={totals.activeCustomers} />
-          <Summary label="Jars Delivered" value={totals.jars} />
-          <Summary label="Total Amount" value={money(totals.amount)} />
+          <Summary label="Jars" value={totals.jars} />
+          <Summary label="Amount" value={money(totals.amount)} />
 
-          <div className="col-span-2 flex flex-col justify-center gap-2 md:col-span-1">
+          <div className="col-span-4 flex items-center gap-2 sm:col-span-2 sm:flex-col sm:items-stretch sm:justify-center md:col-span-1">
             <button
               type="submit"
               disabled={
@@ -810,12 +811,12 @@ export default function DeliveryBulkEntry({
                 !customers.length ||
                 totals.activeCustomers === 0
               }
-              className="inline-flex min-h-[60px] w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-bold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[46px] sm:gap-2 sm:rounded-xl sm:px-4 sm:py-3 sm:text-sm"
             >
               {saving ? (
-                <RefreshCw size={17} className="animate-spin" />
+                <RefreshCw size={15} className="animate-spin sm:size-[17px]" />
               ) : (
-                <Save size={17} />
+                <Save size={15} className="sm:size-[17px]" />
               )}
               {saving ? "Submitting..." : "SUBMIT ALL DELIVERIES"}
             </button>
@@ -825,7 +826,7 @@ export default function DeliveryBulkEntry({
                 type="button"
                 onClick={onCancel}
                 disabled={saving}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50 sm:min-h-10 sm:rounded-xl sm:px-4 sm:text-sm"
               >
                 Cancel
               </button>
@@ -885,11 +886,11 @@ function QuantityControl({
 
 function Summary({ label, value }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-3">
-      <p className="text-[11px] font-semibold uppercase text-slate-500">
+    <div className="min-w-0 rounded-lg bg-slate-50 px-1.5 py-1.5 sm:rounded-xl sm:p-3">
+      <p className="truncate text-[8px] font-bold uppercase leading-tight tracking-tight text-slate-500 sm:text-[11px] sm:tracking-normal">
         {label}
       </p>
-      <p className="mt-1 break-words text-base font-bold text-[#102C46]">
+      <p className="mt-0.5 truncate text-xs font-extrabold leading-tight text-[#102C46] sm:mt-1 sm:break-words sm:text-base">
         {value}
       </p>
     </div>

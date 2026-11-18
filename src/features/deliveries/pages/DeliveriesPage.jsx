@@ -454,244 +454,109 @@ export default function DeliveriesPage() {
     }
   }
 
-  // ------------------------------------------
-  // PRODUCT NAME
-  // ------------------------------------------
-
-  function getProductName(productId) {
-    return (
-      products.find(
-        (product) => product.id === productId
-      )?.name || "Product"
-    );
-  }
 
   // ------------------------------------------
   // PAGE UI
   // ------------------------------------------
 
   return (
-    <main className="min-h-screen bg-[#F4F8FA] text-slate-800">
-
-      <div className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-50 text-slate-800">
+      <div className="mx-auto w-full max-w-[1600px] space-y-2.5 px-2.5 py-2.5 sm:space-y-4 sm:px-5 sm:py-4 lg:px-8">
+        
 
         {/* ALERTS */}
         {(pageError || error) && (
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-          >
+          <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 sm:p-4">
             <AlertCircle size={18} className="mt-0.5 shrink-0" />
-            <span>{pageError || error}</span>
-
-            <button
-              type="button"
-              onClick={() => setPageError("")}
-              className="ml-auto"
-              aria-label="Dismiss error"
-            >
+            <span className="min-w-0 flex-1 break-words">{pageError || error}</span>
+            <button type="button" onClick={() => setPageError("")} className="shrink-0 rounded-lg p-1 hover:bg-red-100" aria-label="Dismiss error">
               <X size={16} />
             </button>
           </div>
         )}
-
         {success && (
-          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-            <CheckCircle2 size={18} />
-            {success}
-
-            <button
-              type="button"
-              onClick={() => setSuccess("")}
-              className="ml-auto"
-              aria-label="Dismiss success"
-            >
+          <div role="status" className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 sm:p-4">
+            <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
+            <span className="min-w-0 flex-1 break-words">{success}</span>
+            <button type="button" onClick={() => setSuccess("")} className="shrink-0 rounded-lg p-1 hover:bg-emerald-100" aria-label="Dismiss success">
               <X size={16} />
             </button>
           </div>
         )}
 
-        {/* SUMMARY CARDS */}
-        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <SummaryCard
-            icon={<UserRound size={19} />}
-            label="Total Customers"
-            value={filteredCustomers.length}
-            tone="navy"
-          />
-
-          <SummaryCard
-            icon={<CheckCircle2 size={19} />}
-            label="Delivered"
-            value={summary.recorded}
-            tone="teal"
-          />
-
-          <SummaryCard
-            icon={<Clock3 size={19} />}
-            label="Pending"
-            value={summary.pending}
-            tone="amber"
-          />
-
-          <SummaryCard
-            icon={<IndianRupee size={19} />}
-            label="Today's Delivery Value"
-            value={money(summary.totalAmount)}
-            tone="blue"
-          />
+        {/* RESPONSIVE KPI GRID: 2 mobile / 2 tablet / 4 desktop */}
+        <section aria-label="Delivery summary" className="grid grid-cols-4 gap-1.5 sm:gap-3">
+          <SummaryCard icon={<UserRound size={18} />} label="Customers" value={filteredCustomers.length} tone="navy" />
+          <SummaryCard icon={<CheckCircle2 size={18} />} label="Delivered" value={summary.recorded} tone="teal" />
+          <SummaryCard icon={<Clock3 size={18} />} label="Pending" value={summary.pending} tone="amber" />
+          <SummaryCard icon={<IndianRupee size={18} />} label="Delivery value" value={money(summary.totalAmount)} tone="blue" />
         </section>
 
-        {/* FILTER TOGGLE */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:px-5">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                <Filter size={19} />
+        {/* FILTERS */}
+        <section id="delivery-filters" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                <Filter size={17} />
               </div>
-
-              <div>
-                <h2 className="text-sm font-bold text-[#102C46]">
-                  Delivery Filters
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Filters are hidden by default
-                </p>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-900">Find deliveries</h2>
+                <p className="hidden text-xs text-slate-500 sm:block">Filter by date, customer, group, shift or delivery person.</p>
+                <p className="text-[11px] text-slate-500 sm:hidden">Date, customer, group and shift</p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
               {showFilters && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
-                >
-                  <RotateCcw size={14} />
-                  Reset
+                <button type="button" onClick={resetFilters} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2.5 text-xs font-bold text-teal-700 hover:bg-teal-50">
+                  <RotateCcw size={13} /> Reset
                 </button>
               )}
-
               <button
                 type="button"
-                onClick={() =>
-                  setShowFilters((previous) => !previous)
-                }
+                onClick={() => setShowFilters((previous) => !previous)}
                 aria-expanded={showFilters}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#102C46] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800"
+                aria-controls="delivery-filter-fields"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
-                <Filter size={16} />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform ${showFilters ? "rotate-180" : ""
-                    }`}
-                />
+                {showFilters ? "Close" : "Open"}
+                <ChevronDown size={14} className={`transition-transform ${showFilters ? "rotate-180" : ""}`} />
               </button>
             </div>
           </div>
-
           {showFilters && (
-            <div className="space-y-4 border-t border-slate-100 bg-slate-50/50 p-4 sm:p-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <FilterField label="Delivery Date">
-                  <input
-                    type="date"
-                    value={dateFilter}
-                    onChange={(e) =>
-                      setDateFilter(e.target.value)
-                    }
-                    className={inputClass}
-                  />
+            <div id="delivery-filter-fields" className="border-t border-slate-100 bg-slate-50/70 p-2.5 sm:p-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <FilterField label="Delivery date">
+                  <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className={inputClass} />
                 </FilterField>
-
                 <FilterField label="Customer">
-                  <select
-                    value={customerFilter}
-                    onChange={(e) =>
-                      setCustomerFilter(e.target.value)
-                    }
-                    className={inputClass}
-                  >
-                    <option value="">All Customers</option>
-                    {filteredCustomers.map((customer) => (
-                      <option
-                        key={customer.id}
-                        value={customer.id}
-                      >
-                        {customer.name}
-                      </option>
-                    ))}
+                  <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} className={inputClass}>
+                    <option value="">All customers</option>
+                    {filteredCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
                   </select>
                 </FilterField>
-
-                <FilterField label="Customer Group">
-                  <select
-                    value={groupFilter}
-                    onChange={(e) => {
-                      setGroupFilter(e.target.value);
-                      setCustomerFilter("");
-                    }}
-                    className={inputClass}
-                  >
-                    <option value="">All Groups</option>
-                    {groups.map((group) => (
-                      <option
-                        key={group.id}
-                        value={group.id}
-                      >
-                        {group.name}
-                      </option>
-                    ))}
+                <FilterField label="Customer group">
+                  <select value={groupFilter} onChange={(e) => { setGroupFilter(e.target.value); setCustomerFilter(""); }} className={inputClass}>
+                    <option value="">All groups</option>
+                    {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
                   </select>
                 </FilterField>
-
-                <FilterField label="Delivery Shift">
-                  <select
-                    value={shiftFilter}
-                    onChange={(e) =>
-                      setShiftFilter(e.target.value)
-                    }
-                    className={inputClass}
-                  >
-                    <option value="">All Shifts</option>
+                <FilterField label="Delivery shift">
+                  <select value={shiftFilter} onChange={(e) => setShiftFilter(e.target.value)} className={inputClass}>
+                    <option value="">All shifts</option>
                     <option value="morning">Morning</option>
                     <option value="afternoon">Afternoon</option>
                     <option value="evening">Evening</option>
                     <option value="night">Night</option>
                   </select>
                 </FilterField>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FilterField label="Search Customer">
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search name, phone, area..."
-                    className={inputClass}
-                  />
+                <FilterField label="Search customer">
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, phone, area..." className={inputClass} />
                 </FilterField>
-
-                <FilterField label="Deliver By">
-                  <select
-                    value={employeeFilter}
-                    onChange={(e) =>
-                      setEmployeeFilter(e.target.value)
-                    }
-                    className={inputClass}
-                  >
-                    <option value="">All Delivery Persons</option>
-                    {employees.map((employee) => (
-                      <option
-                        key={employee.id}
-                        value={employee.id}
-                      >
-                        {employee.name ||
-                          employee.full_name ||
-                          "Employee"}
-                      </option>
-                    ))}
+                <FilterField label="Delivery person">
+                  <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className={inputClass}>
+                    <option value="">All delivery persons</option>
+                    {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name || employee.full_name || "Employee"}</option>)}
                   </select>
                 </FilterField>
               </div>
@@ -699,54 +564,36 @@ export default function DeliveriesPage() {
           )}
         </section>
 
-
-        {/* GROUP-WISE BULK DELIVERY ENTRY */}
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-14 text-center">
-            <RefreshCw
-              size={28}
-              className="mx-auto animate-spin text-teal-700"
+        {/* DELIVERY WORKSPACE */}
+        <section aria-label="Customer delivery entry" className="min-w-0">
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center sm:py-16">
+              <RefreshCw size={26} className="mx-auto animate-spin text-teal-700" />
+              <p className="mt-3 text-sm font-semibold text-slate-600">Loading delivery records...</p>
+              <p className="mt-1 text-xs text-slate-400">Please wait while we prepare your delivery list.</p>
+            </div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center sm:py-16">
+              <Package size={32} className="mx-auto text-slate-300" />
+              <h2 className="mt-3 font-bold text-slate-800">No customers found</h2>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">Try another group, date or search term to find customers.</p>
+              <button type="button" onClick={resetFilters} className="mt-4 min-h-11 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <DeliveryBulkEntry
+              customers={filteredCustomers}
+              products={products}
+              balances={balances}
+              date={dateFilter}
+              shift={shiftFilter || "morning"}
+              getCustomerRatePlans={getCustomerRatePlans}
+              onSubmit={handleBulkSubmit}
             />
-            <p className="mt-3 text-sm font-semibold text-slate-600">
-              Loading delivery records...
-            </p>
-          </div>
-        ) : filteredCustomers.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
-            <Package
-              size={34}
-              className="mx-auto text-slate-300"
-            />
-
-            <h3 className="mt-3 font-bold text-slate-800">
-              No customers found
-            </h3>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Select another group or change your filters.
-            </p>
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="mt-4 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              Reset Filters
-            </button>
-          </div>
-        ) : (
-          <DeliveryBulkEntry
-            customers={filteredCustomers}
-            products={products}
-            balances={balances}
-            date={dateFilter}
-            shift={shiftFilter || "morning"}
-            getCustomerRatePlans={getCustomerRatePlans}
-            onSubmit={handleBulkSubmit}
-          />
-        )}
+          )}
+        </section>
       </div>
-
     </main>
   );
 }
@@ -764,23 +611,15 @@ function SummaryCard({ icon, label, value, tone }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-slate-500">
-          {label}
-        </p>
-
-        <div
-          className={`flex size-9 items-center justify-center rounded-xl ${tones[tone]}`}
-        >
+    <article className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-2 shadow-sm sm:rounded-xl sm:p-3 lg:p-4">
+      <div className="flex min-h-7 flex-col items-start justify-between gap-1 sm:min-h-0 sm:flex-row sm:items-center sm:gap-1.5">
+        <p className="w-full min-w-0 break-words text-[8px] font-bold uppercase leading-tight tracking-tight text-slate-500 sm:text-xs">{label}</p>
+        <div className={`hidden size-8 shrink-0 items-center justify-center rounded-lg sm:flex sm:size-9 sm:rounded-xl ${tones[tone]}`}>
           {icon}
         </div>
       </div>
-
-      <p className="mt-3 break-words text-xl font-bold text-[#102C46] sm:text-2xl">
-        {value}
-      </p>
-    </div>
+      <p className="mt-1 min-w-0 break-all text-sm font-extrabold leading-tight tracking-tight text-[#102C46] sm:mt-2 sm:break-words sm:text-xl">{value}</p>
+    </article>
   );
 }
 

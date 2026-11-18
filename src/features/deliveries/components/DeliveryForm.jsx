@@ -66,7 +66,7 @@ const currency = new Intl.NumberFormat("en-IN", {
 });
 
 const inputClass =
-  "w-full min-h-[46px] rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+  "w-full min-h-[40px] sm:min-h-[46px] rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2.5 sm:px-3.5 py-2 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 
 function createProductRow(plan, product) {
   return {
@@ -585,38 +585,39 @@ export default function DeliveryForm({
   --------------------------------- */
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <form onSubmit={handleSubmit} className="space-y-3 pb-20 sm:space-y-6 sm:pb-0">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950 px-5 py-6 text-white sm:px-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950 px-3.5 py-3.5 text-white sm:px-7 sm:py-6">
+          <div className="flex items-center justify-between gap-2 sm:flex-row sm:gap-4 sm:items-center sm:justify-between">
             <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-teal-100">
+              <div className="mb-1.5 hidden items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-teal-100 sm:inline-flex sm:mb-2">
                 <Truck size={14} />
                 DELIVERY MANAGEMENT
               </div>
 
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              <h2 className="text-lg font-bold tracking-tight sm:text-3xl">
                 New Delivery
               </h2>
 
-              <p className="mt-1.5 text-sm text-slate-300">
+              <p className="mt-0.5 hidden text-sm text-slate-300 sm:mt-1.5 sm:block">
                 Manage customer deliveries, products and returns.
               </p>
             </div>
 
-            <div className="flex items-center gap-3 self-start rounded-xl border border-white/15 bg-white/10 px-4 py-3 sm:self-center">
-              <div className="rounded-lg bg-teal-400/15 p-2 text-teal-300">
-                <CalendarDays size={20} />
+            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-2.5 py-2 sm:gap-3 sm:rounded-xl sm:px-4 sm:py-3">
+              <div className="rounded-md bg-teal-400/15 p-1.5 text-teal-300 sm:rounded-lg sm:p-2">
+                <CalendarDays size={16} className="sm:hidden" />
+                <CalendarDays size={20} className="hidden sm:block" />
               </div>
 
               <div>
-                <p className="text-xs text-slate-300">
+                <p className="text-[10px] text-slate-300 sm:text-xs">
                   Delivery Date
                 </p>
 
-                <p className="text-sm font-semibold text-white">
+                <p className="text-xs font-semibold text-white sm:text-sm">
                   {form.delivery_date || today()}
                 </p>
               </div>
@@ -625,13 +626,13 @@ export default function DeliveryForm({
         </div>
 
         {/* Main Form */}
-        <div className="space-y-7 p-4 sm:p-6 lg:p-7">
+        <div className="space-y-4 p-3 sm:space-y-7 sm:p-6 lg:p-7">
 
           {/* Error */}
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+              className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 sm:gap-3 sm:p-4 sm:text-sm"
             >
               <AlertCircle size={19} className="mt-0.5 shrink-0" />
 
@@ -647,29 +648,30 @@ export default function DeliveryForm({
 
           {/* Delivery Details */}
           <section>
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                <ClipboardList size={20} />
+            <div className="mb-3 flex items-center gap-2 sm:mb-5 sm:gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700 sm:size-10 sm:rounded-xl">
+                <ClipboardList size={17} className="sm:hidden" />
+                <ClipboardList size={20} className="hidden sm:block" />
               </div>
 
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900 sm:text-base">
                   Delivery Details
                 </h3>
 
-                <p className="text-xs text-slate-500">
+                <p className="text-[11px] text-slate-500 sm:text-xs">
                   Customer and delivery information
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2">
 
               {/* Customer */}
-              <div className="md:col-span-2">
+              <div className="col-span-2 md:col-span-2">
                 <label
                   htmlFor="delivery-customer"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
+                  className="mb-1.5 block text-xs font-semibold text-slate-700 sm:mb-2 sm:text-sm"
                 >
                   Customer <span className="text-red-500">*</span>
                 </label>
@@ -693,7 +695,7 @@ export default function DeliveryForm({
                 </select>
 
                 {selectedCustomer && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2.5 text-xs text-teal-800">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded-lg border border-teal-100 bg-teal-50 px-2.5 py-2 text-[11px] text-teal-800 sm:mt-2 sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-xs">
                     <CheckCircle2 size={15} />
 
                     <span className="font-semibold">
@@ -711,7 +713,7 @@ export default function DeliveryForm({
               <div>
                 <label
                   htmlFor="delivery-date"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
+                  className="mb-1.5 block text-xs font-semibold text-slate-700 sm:mb-2 sm:text-sm"
                 >
                   Delivery Date <span className="text-red-500">*</span>
                 </label>
@@ -796,18 +798,19 @@ export default function DeliveryForm({
 
           {/* Products */}
           <section>
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-3 flex items-center justify-between gap-2 sm:mb-5 sm:flex-row sm:gap-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
-                  <Package size={20} />
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 sm:size-10 sm:rounded-xl">
+                  <Package size={17} className="sm:hidden" />
+                  <Package size={20} className="hidden sm:block" />
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="text-sm font-bold text-slate-900 sm:text-base">
                     Delivery Products
                   </h3>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500 sm:text-xs">
                     Add products assigned to this customer
                   </p>
                 </div>
@@ -820,7 +823,7 @@ export default function DeliveryForm({
                   loadingProducts ||
                   availableProducts.length === 0
                 }
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-11 sm:gap-2 sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm"
               >
                 <Plus size={17} />
                 Add Product
@@ -921,7 +924,7 @@ export default function DeliveryForm({
                   </div>
 
                   {/* Product content */}
-                  <div className="space-y-5 p-4 sm:p-5">
+                  <div className="space-y-3 p-3 sm:space-y-5 sm:p-5">
                     <div>
                       <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
                         Select Product
@@ -961,7 +964,7 @@ export default function DeliveryForm({
                     </div>
 
                     {/* Quantity and rate grid */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                       {/* Delivered */}
                       <div>
                         <label className="mb-2 block text-xs font-semibold text-slate-600">
@@ -1043,7 +1046,7 @@ export default function DeliveryForm({
                           Product Amount
                         </label>
 
-                        <div className="flex min-h-[46px] items-center rounded-xl border border-teal-100 bg-teal-50 px-3.5 py-2.5">
+                        <div className="flex min-h-10 items-center rounded-lg border border-teal-100 bg-teal-50 px-2.5 py-2 sm:min-h-[46px] sm:rounded-xl sm:px-3.5 sm:py-2.5">
                           <span className="text-base font-bold text-teal-800">
                             {currency.format(
                               Math.max(
@@ -1104,9 +1107,10 @@ export default function DeliveryForm({
 
           {/* Delivery Summary */}
           <section>
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                <ReceiptText size={20} />
+            <div className="mb-3 flex items-center gap-2 sm:mb-5 sm:gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 sm:size-10 sm:rounded-xl">
+                <ReceiptText size={17} className="sm:hidden" />
+                <ReceiptText size={20} className="hidden sm:block" />
               </div>
 
               <div>
@@ -1120,8 +1124,8 @@ export default function DeliveryForm({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-2.5 sm:rounded-2xl sm:p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-slate-500">
                     Products Selected
@@ -1130,12 +1134,12 @@ export default function DeliveryForm({
                   <Package size={17} className="text-slate-400" />
                 </div>
 
-                <p className="mt-3 text-2xl font-bold text-slate-900">
+                <p className="mt-1.5 text-lg font-bold text-slate-900 sm:mt-3 sm:text-2xl">
                   {productRows.length}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-2.5 sm:rounded-2xl sm:p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-slate-500">
                     Delivered Jars
@@ -1144,7 +1148,7 @@ export default function DeliveryForm({
                   <Truck size={17} className="text-teal-600" />
                 </div>
 
-                <p className="mt-3 text-2xl font-bold text-slate-900">
+                <p className="mt-1.5 text-lg font-bold text-slate-900 sm:mt-3 sm:text-2xl">
                   {totalDelivered}
                 </p>
               </div>
@@ -1158,37 +1162,37 @@ export default function DeliveryForm({
                   <RefreshCw size={17} className="text-amber-600" />
                 </div>
 
-                <p className="mt-3 text-2xl font-bold text-amber-600">
+                <p className="mt-1.5 text-lg font-bold text-amber-600 sm:mt-3 sm:text-2xl">
                   {totalReturned}
                 </p>
               </div>
             </div>
 
             {/* Total amount */}
-            <div className="mt-4 overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 to-teal-900 p-5 text-white shadow-lg sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-3 overflow-hidden rounded-xl bg-gradient-to-r from-slate-950 to-teal-900 p-3 text-white shadow-sm sm:mt-4 sm:rounded-2xl sm:p-6 sm:shadow-lg">
+              <div className="flex items-center justify-between gap-3 sm:flex-row sm:gap-4 sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium text-teal-100">
                     <IndianRupee size={16} />
                     Total Delivery Amount
                   </div>
 
-                  <p className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+                  <p className="mt-1 text-2xl font-bold tracking-tight sm:mt-2 sm:text-4xl">
                     {currency.format(totalAmount)}
                   </p>
 
-                  <p className="mt-2 text-xs text-teal-100/80">
+                  <p className="mt-1 hidden text-xs text-teal-100/80 sm:mt-2 sm:block">
                     Delivered quantity × unit rate
                   </p>
                 </div>
 
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-teal-200">
+                <div className="hidden h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-teal-200 sm:flex">
                   <ReceiptText size={28} />
                 </div>
               </div>
             </div>
 
-            <p className="mt-3 text-xs leading-5 text-slate-500">
+            <p className="mt-2 text-[10px] leading-4 text-slate-500 sm:mt-3 sm:text-xs sm:leading-5">
               Returned quantities are recorded separately.
               Delivery amount is calculated using delivered
               quantity and unit rate. Returns are not deducted
@@ -1215,13 +1219,13 @@ export default function DeliveryForm({
               maxLength={1000}
               value={form.notes}
               onChange={handleFormChange}
-              className={`${inputClass} min-h-[100px] resize-y`}
+              className={`${inputClass} min-h-[76px] resize-y sm:min-h-[100px]`}
               placeholder="Add special delivery instructions..."
             />
           </section>
 
           {/* Information */}
-          <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+          <div className="flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 sm:gap-3 sm:p-4">
             <Info
               size={18}
               className="mt-0.5 shrink-0 text-blue-700"
@@ -1236,12 +1240,12 @@ export default function DeliveryForm({
           </div>
 
           {/* Footer Buttons */}
-          <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+          <div className="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t border-slate-200 bg-white/95 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-6px_20px_rgba(15,23,42,0.08)] backdrop-blur sm:static sm:justify-end sm:gap-3 sm:border-t sm:border-slate-100 sm:bg-transparent sm:px-0 sm:pt-5 sm:pb-0 sm:shadow-none sm:backdrop-blur-none">
             <button
               type="button"
               onClick={onCancel}
               disabled={saving}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:min-h-12 sm:flex-none sm:gap-2 sm:rounded-xl sm:px-6 sm:py-3 sm:text-sm"
             >
               <X size={17} />
               Cancel
@@ -1255,7 +1259,7 @@ export default function DeliveryForm({
                 customers.length === 0 ||
                 productRows.length === 0
               }
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-7 py-3 text-sm font-bold text-white shadow-md shadow-teal-900/10 transition hover:bg-teal-800 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-10 flex-[1.4] items-center justify-center gap-1.5 rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-12 sm:flex-none sm:gap-2 sm:rounded-xl sm:px-7 sm:py-3 sm:text-sm sm:shadow-md sm:shadow-teal-900/10 sm:hover:shadow-lg"
             >
               {saving ? (
                 <RefreshCw

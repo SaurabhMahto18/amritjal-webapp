@@ -1,7 +1,6 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Droplets, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Droplets, LoaderCircle, RefreshCw } from "lucide-react";
 
 import deliveryService from "../services/deliveryService";
 import DeliveryForm from "../components/DeliveryForm";
@@ -20,9 +19,9 @@ export default function DeliveryCreatePage() {
 
     try {
       const result = await deliveryService.getCustomers();
-      setCustomers(result);
+      setCustomers(result || []);
     } catch (err) {
-      setError(err.message || "Unable to load customers.");
+      setError(err?.message || "Unable to load customers.");
     } finally {
       setLoadingCustomers(false);
     }
@@ -33,6 +32,8 @@ export default function DeliveryCreatePage() {
   }, [loadCustomers]);
 
   const handleSubmit = async (formData) => {
+    if (saving) return;
+
     setError("");
     setSaving(true);
 
@@ -75,68 +76,94 @@ export default function DeliveryCreatePage() {
         state: { success: "Delivery saved successfully." },
       });
     } catch (err) {
-      setError(err.message || "Unable to save delivery.");
+      setError(err?.message || "Unable to save delivery.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-800 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl">
-        <button
-          type="button"
-          onClick={() => navigate("/deliveries")}
-          className="mb-5 inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-cyan-800"
-        >
-          <ArrowLeft size={18} />
-          Back to Deliveries
-        </button>
+    <main className="min-h-[100dvh] bg-slate-50 text-slate-800">
+      <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-6 sm:py-6 lg:px-8">
+        {/* Compact navigation and page heading */}
+        <div className="mb-3 flex items-center gap-2 sm:mb-6">
+          <button
+            type="button"
+            onClick={() => navigate("/deliveries")}
+            aria-label="Back to deliveries"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 hover:text-cyan-800 sm:size-10"
+          >
+            <ArrowLeft size={18} />
+          </button>
 
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-2xl bg-cyan-100 p-3 text-cyan-800">
-            <Droplets size={28} />
-          </div>
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-800 sm:size-12 sm:rounded-2xl">
+              <Droplets size={22} className="sm:hidden" />
+              <Droplets size={26} className="hidden sm:block" />
+            </div>
 
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Create Delivery
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Record a customer's water jar delivery.
-            </p>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
+                Create Delivery
+              </h1>
+              <p className="truncate text-xs text-slate-500 sm:mt-1 sm:text-sm">
+                Record a customer's water jar delivery
+              </p>
+            </div>
           </div>
         </div>
 
         {error && (
           <div
             role="alert"
-            className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+            className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700 sm:mb-5 sm:px-4 sm:py-3 sm:text-sm"
           >
-            {error}
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => setError("")}
+              aria-label="Dismiss error"
+              className="shrink-0 font-semibold text-red-800"
+            >
+              ×
+            </button>
           </div>
         )}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 bg-gradient-to-r from-cyan-50 to-blue-50 px-5 py-4 sm:px-6">
-            <h2 className="font-semibold">Delivery Details</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Fields marked as required must be completed.
-            </p>
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
+          {/* Shorter card header on phones; expanded helper text on larger screens */}
+          <div className="flex items-center gap-2.5 border-b border-slate-100 bg-cyan-50/70 px-3 py-3 sm:px-6 sm:py-4">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-cyan-800 sm:hidden">
+              <Droplets size={17} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-slate-900 sm:text-base">
+                Delivery Details
+              </h2>
+              <p className="hidden text-sm text-slate-500 sm:mt-1 sm:block">
+                Complete the required fields to record this delivery.
+              </p>
+              <p className="text-[11px] text-slate-500 sm:hidden">
+                Enter customer and delivery information
+              </p>
+            </div>
           </div>
 
-          <div className="p-5 sm:p-6">
+          <div className="p-3 sm:p-6">
             {loadingCustomers ? (
-              <div className="flex items-center justify-center gap-3 py-12 text-sm text-slate-500">
+              <div
+                role="status"
+                className="flex min-h-32 items-center justify-center gap-2.5 py-8 text-sm text-slate-500 sm:min-h-48"
+              >
                 <LoaderCircle
-                  size={22}
+                  size={20}
                   className="animate-spin text-cyan-700"
                 />
                 Loading customers...
               </div>
             ) : customers.length === 0 ? (
-              <div className="space-y-4">
-                <p className="text-sm text-amber-700">
+              <div className="space-y-3 py-2 sm:space-y-4">
+                <p className="text-xs leading-relaxed text-amber-700 sm:text-sm">
                   No active customers are available. Add a customer before
                   creating a delivery.
                 </p>
@@ -144,22 +171,63 @@ export default function DeliveryCreatePage() {
                 <button
                   type="button"
                   onClick={loadCustomers}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                  disabled={loadingCustomers}
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:w-auto"
                 >
+                  <RefreshCw size={15} />
                   Retry Loading Customers
                 </button>
               </div>
             ) : (
-              <DeliveryForm
-                customers={customers}
-                onSubmit={handleSubmit}
-                onCancel={() => navigate("/deliveries")}
-                submitLabel={saving ? "Saving Delivery..." : "Save Delivery"}
-              />
+              <div className="delivery-form-responsive">
+                <DeliveryForm
+                  customers={customers}
+                  onSubmit={handleSubmit}
+                  onCancel={() => navigate("/deliveries")}
+                  submitLabel={saving ? "Saving Delivery..." : "Save Delivery"}
+                />
+              </div>
             )}
           </div>
         </section>
+
+        <p className="mt-3 px-1 text-center text-[10px] text-slate-400 sm:mt-4 sm:text-xs">
+          Please verify the delivery details before saving.
+        </p>
       </div>
+
+      {/* Scoped responsive refinements for common native controls rendered by DeliveryForm.
+          These do not change form state, validation, or submission behavior. */}
+      <style>{`
+        .delivery-form-responsive {
+          min-width: 0;
+        }
+        .delivery-form-responsive input,
+        .delivery-form-responsive select,
+        .delivery-form-responsive textarea {
+          max-width: 100%;
+        }
+        .delivery-form-responsive button {
+          touch-action: manipulation;
+        }
+        @media (max-width: 639px) {
+          .delivery-form-responsive {
+            font-size: 13px;
+          }
+          .delivery-form-responsive input,
+          .delivery-form-responsive select,
+          .delivery-form-responsive textarea {
+            min-height: 40px;
+            font-size: 14px;
+          }
+          .delivery-form-responsive textarea {
+            min-height: 76px;
+          }
+          .delivery-form-responsive button {
+            min-height: 40px;
+          }
+        }
+      `}</style>
     </main>
   );
 }
