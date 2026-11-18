@@ -24,6 +24,8 @@ import {
   Filter,
   ChevronDown,
   Wallet,
+  HandCoins,
+  UserRound,
   Upload,
 } from "lucide-react";
 
@@ -35,6 +37,14 @@ const currency = (value) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
+
+const compactCurrency = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 1,
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
 
@@ -205,10 +215,17 @@ function SwipeToDelete({ children, onDelete, disabled = false }) {
       </button>
 
       <div
-        className="relative bg-white transition-transform duration-200 ease-out"
+        className="relative touch-pan-y bg-white transition-transform duration-200 ease-out"
         style={{ transform: `translateX(${offset}px)` }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        onClickCapture={(event) => {
+          if (offset < 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            setOffset(0);
+          }
+        }}
       >
         {children}
       </div>
@@ -243,6 +260,18 @@ export default function CustomersPage() {
   const [financeLoading, setFinanceLoading] = useState(true);
 
   const loadCustomerFinance = useCallback(async () => {
+    const customerIds = customers
+      .map((customer) => customer?.id)
+      .filter(Boolean);
+
+    // Do not issue broad finance queries while the customer list is empty.
+    if (customerIds.length === 0) {
+      setCustomerFinance({});
+      setCustomerJarBalances({});
+      setFinanceLoading(false);
+      return;
+    }
+
     setFinanceLoading(true);
 
     try {
@@ -263,6 +292,8 @@ export default function CustomersPage() {
 
       if (businessError) throw businessError;
 
+      // Fetch only rows belonging to customers on this screen.
+      // Independent account datasets are fetched concurrently for a faster refresh.
       const [
         deliveriesResult,
         paymentsResult,
@@ -271,18 +302,20 @@ export default function CustomersPage() {
         supabase
           .from("deliveries")
           .select("customer_id, amount")
-          .eq("business_id", business.id),
+          .eq("business_id", business.id)
+          .in("customer_id", customerIds),
 
         supabase
           .from("payments")
           .select("customer_id, amount")
-          .eq("business_id", business.id),
+          .eq("business_id", business.id)
+          .in("customer_id", customerIds),
 
         supabase
           .from("jar_transactions")
           .select("customer_id, movement_type, quantity")
           .eq("business_id", business.id)
-          .not("customer_id", "is", null)
+          .in("customer_id", customerIds)
           .in("movement_type", ["delivered", "returned"]),
       ]);
 
@@ -527,11 +560,11 @@ export default function CustomersPage() {
     const robots =
       previousRobots || document.createElement("meta");
 
-    document.title = "Customers | Amrit Jal";
+    document.title = "Customer Management | Amrit Jal";
 
     description.name = "description";
     description.content =
-      "Manage customer profiles, contact details, delivery records, account balances, outstanding dues and customer groups in Amrit Jal.";
+      "Manage customer profiles, phone numbers, delivery records, jar balances, outstanding dues, advance payments and customer groups in Amrit Jal.";
 
     robots.name = "robots";
     robots.content = "noindex, nofollow";
@@ -792,21 +825,30 @@ export default function CustomersPage() {
             />
           ) : (
             <>
-              {/* MOBILE LAYOUT — reference-style horizontal customer cards */}
-
-              <div className="space-y-3 bg-slate-100 p-3 md:hidden">
+              {/* MOBILE LAYOUT — compact reference-style customer cards */}
+              <div className="space-y-2 bg-[#F1F3F4] p-2.5 md:hidden">
                 {filteredCustomers.map((customer) => {
                   const finance = customerFinance[customer.id] || {};
-                  const due = Math.max(
-                    0,
+                  const netBalance =
                     Number(customer.openingBalance || 0) +
-                      Number(finance.delivered || 0) -
-                      Number(finance.paid || 0)
-                  );
+                    Number(finance.delivered || 0) -
+                    Number(finance.paid || 0);
+                  const totalDue = Math.max(0, netBalance);
+                  const advanceAmount = Math.max(0, -netBalance);
                   const jarBalance = Math.max(
                     0,
                     Number(customerJarBalances[customer.id] || 0)
                   );
+                  // These are shown when the customer payload provides billing-period values.
+                  // The current list query does not calculate a past/current split itself.
+                  const pastDue = Number(
+                    customer.pastDue ?? customer.past_due ?? 0
+                  );
+                  const currentDue = Number(
+                    customer.currentDue ?? customer.current_due ?? 0
+                  );
+                  const hasDue = totalDue > 0;
+                  const accountAmount = hasDue ? totalDue : advanceAmount;
 
                   return (
                     <SwipeToDelete
@@ -814,78 +856,94 @@ export default function CustomersPage() {
                       disabled={actionLoading === customer.id}
                       onDelete={() => setConfirmDelete(customer)}
                     >
-                      <article className="bg-white px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to={`/customers/${customer.id}`}
-                            aria-label={`View ${customer.name}`}
-                            className="flex size-[68px] shrink-0 items-center justify-center rounded-full bg-cyan-100 text-2xl font-bold text-cyan-800 ring-4 ring-cyan-50"
-                          >
-                            {String(customer.name || "C").trim().charAt(0).toUpperCase()}
-                          </Link>
+                      <article className="relative bg-white px-2.5 py-2.5">
+                        {/* Full-card navigation; phone and account actions sit above it. */}
+                        <Link
+                          to={`/customers/${customer.id}`}
+                          aria-label={`Open ${customer.name || "customer"} profile`}
+                          className="absolute inset-0 z-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500"
+                        />
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Link
-                                to={`/customers/${customer.id}`}
-                                className="break-words text-[17px] font-medium leading-6 text-slate-900"
-                              >
+                        <div className="pointer-events-none relative z-10 flex items-center gap-2.5">
+                          <div className="pointer-events-none flex size-[48px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#00A6C8] text-white">
+                            <UserRound size={31} strokeWidth={1.7} />
+                          </div>
+
+                          <div className="pointer-events-none min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <h3 className="truncate text-[13px] font-semibold leading-5 text-[#252A30]">
                                 {customer.name}
-                              </Link>
-                              <StatusBadge archived={customer.archived} />
+                              </h3>
+                              {customer.archived && (
+                                <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
+                                  Archived
+                                </span>
+                              )}
                             </div>
-
-                            {customer.phone && (
-                              <p className="mt-1.5 text-sm text-slate-500">
-                                {customer.phone}
-                              </p>
-                            )}
-
-                            <p className="mt-1 text-sm text-slate-400">
-                              {customer.groupName || "Customer"}
+                            <p className="mt-0.5 truncate text-[11px] leading-4 text-[#92999F]">
+                              {customer.phone || "Phone not added"}
+                            </p>
+                            <p className="truncate text-[11px] leading-4 text-[#A2A7AC]">
+                              {customer.groupName || customer.area || "Customer"}
                             </p>
                           </div>
 
-                          <div className="flex shrink-0 flex-col items-center gap-3">
+                          <div className="pointer-events-auto relative z-20 flex shrink-0 items-center gap-2.5 pr-0.5">
                             {customer.phone ? (
                               <a
                                 href={`tel:${customer.phone}`}
                                 aria-label={`Call ${customer.name}`}
-                                className="text-sky-600"
+                                onClick={(event) => event.stopPropagation()}
+                                className="flex size-7 items-center justify-center text-[#159FD1]"
                               >
-                                <Phone size={23} fill="currentColor" />
+                                <Phone size={17} fill="currentColor" strokeWidth={1.8} />
                               </a>
                             ) : null}
                             <Link
                               to={`/customers/${customer.id}`}
                               aria-label={`Open account for ${customer.name}`}
-                              className="text-sky-600"
+                              onClick={(event) => event.stopPropagation()}
+                              className="flex size-7 items-center justify-center text-[#159FD1]"
                             >
-                              <Wallet size={25} />
+                              <HandCoins size={20} strokeWidth={1.8} />
                             </Link>
                           </div>
                         </div>
 
-                        <div className="my-4 border-t border-slate-300" />
+                        <div className="relative z-10 my-2 border-t border-[#C9CDD0]" />
 
-                        <div className="grid grid-cols-3 divide-x divide-slate-200 text-center">
-                          <div className="px-1">
-                            <p className="text-[13px] font-semibold text-sky-600">
-                              {financeLoading ? "..." : jarBalance}
+                        <div className="pointer-events-none relative z-10 grid grid-cols-4 divide-x divide-[#D9DDE0] text-center">
+                          <div className="min-w-0 px-0.5">
+                            <p className="truncate text-[12px] font-bold leading-4 text-[#168CCB]">
+                              {financeLoading ? "…" : jarBalance}
                             </p>
-                            <p className="mt-1 text-xs leading-4 text-slate-400">Balance Jar</p>
+                            <p className="mt-0.5 truncate text-[9px] leading-3.5 text-[#9A9FA4]">
+                              Balance Jar
+                            </p>
                           </div>
-                          <div className="px-1">
-                            <p className={`text-[13px] font-bold ${due > 0 ? "text-rose-600" : "text-slate-900"}`}>
-                              {financeLoading ? "Loading..." : currency(due)}
+                          <div className="min-w-0 px-0.5">
+                            <p className="truncate text-[12px] font-bold leading-4 text-[#252A30]">
+                              {financeLoading ? "…" : compactCurrency(pastDue)}
                             </p>
-                            <p className="mt-1 text-xs leading-4 text-slate-400">Total Due</p>
+                            <p className="mt-0.5 truncate text-[9px] leading-3.5 text-[#9A9FA4]">
+                              Past Due
+                            </p>
                           </div>
-                          <div className="px-1">
-                            <p className="text-[13px] font-semibold text-teal-700">
-                              {currency(customer.jarRate)}
+                          <div className="min-w-0 px-0.5">
+                            <p className="truncate text-[12px] font-bold leading-4 text-[#252A30]">
+                              {financeLoading ? "…" : compactCurrency(currentDue)}
                             </p>
-                            <p className="mt-1 text-xs leading-4 text-slate-400">Per Jar</p>
+                            <p className="mt-0.5 truncate text-[9px] leading-3.5 text-[#9A9FA4]">
+                              Current Due
+                            </p>
+                          </div>
+                          <div className="min-w-0 px-0.5">
+                            <p className={`truncate text-[12px] font-bold leading-4 ${hasDue ? "text-[#D65E6B]" : "text-[#38B68A]"}`}>
+                              {financeLoading ? "…" : compactCurrency(accountAmount)}
+                            </p>
+                            <p className="mt-0.5 truncate text-[9px] leading-3.5 text-[#9A9FA4]">
+                              {hasDue ? "Total Due" : "Adv Amt"}
+                            </p>
                           </div>
                         </div>
                       </article>
