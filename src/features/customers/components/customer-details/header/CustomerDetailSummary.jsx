@@ -9,20 +9,18 @@ const formatAmount = (value) =>
 
 function SummaryMetric({ label, value, tone = "neutral" }) {
   const tones = {
-    neutral: "bg-slate-100 text-slate-700",
-    danger: "bg-rose-50 text-rose-600",
-    info: "bg-blue-50 text-blue-700",
+    neutral: "text-slate-800",
+    danger: "text-rose-600",
+    info: "text-blue-700",
   };
 
   return (
-    <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-2 sm:justify-start sm:gap-2 sm:rounded-none sm:bg-transparent sm:px-0 sm:py-0">
-      <span className="min-w-0 truncate text-[11px] font-medium text-slate-500 sm:text-sm">
+    <div className="flex min-w-0 items-center justify-between gap-1.5 rounded-md bg-slate-50 px-2 py-1.5 sm:rounded-lg sm:px-2.5 sm:py-2">
+      <span className="truncate text-[10px] font-medium text-slate-500 sm:text-xs">
         {label}
       </span>
 
-      <span
-        className={`shrink-0 rounded-full px-2.5 py-1 text-center text-[11px] font-semibold tabular-nums sm:min-w-10 sm:px-3 sm:py-1.5 sm:text-xs ${tones[tone]}`}
-      >
+      <span className={`shrink-0 text-[11px] font-bold tabular-nums sm:text-sm ${tones[tone]}`}>
         {value}
       </span>
     </div>
@@ -42,11 +40,10 @@ export default function CustomerDetailSummary({
   return (
     <section
       aria-label="Customer account summary"
-      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5"
+      className="w-full rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm sm:rounded-xl sm:p-3"
     >
-      {/* Compact customer identity */}
-      <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
-        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-500 sm:size-14">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500">
           {customer?.profileImage ? (
             <img
               src={customer.profileImage}
@@ -54,25 +51,21 @@ export default function CustomerDetailSummary({
               className="size-full object-cover"
             />
           ) : (
-            <UserRound size={21} className="sm:hidden" />
-          )}
-          {!customer?.profileImage && (
-            <UserRound size={27} className="hidden sm:block" />
+            <UserRound size={19} />
           )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-bold leading-5 text-slate-900 sm:break-words sm:text-lg">
+          <h1 className="truncate text-sm font-bold text-slate-900">
             {customerName}
           </h1>
-          <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:mt-1 sm:text-sm">
+          <p className="truncate text-[10px] text-slate-500">
             {customerGroup}
           </p>
         </div>
       </div>
 
-      {/* Minimal 2-column metrics on phones */}
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-6 sm:gap-y-3">
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <SummaryMetric
           label="Balance Jar"
           value={formatAmount(balanceJars)}
@@ -80,16 +73,16 @@ export default function CustomerDetailSummary({
         />
         <SummaryMetric
           label="Due Amount"
-          value={formatAmount(dueAmount)}
+          value={`₹${formatAmount(dueAmount)}`}
           tone="danger"
         />
         <SummaryMetric
           label="Past Due"
-          value={formatAmount(pastDue)}
+          value={`₹${formatAmount(pastDue)}`}
         />
         <SummaryMetric
           label="Current Due"
-          value={formatAmount(currentDue)}
+          value={`₹${formatAmount(currentDue)}`}
         />
       </div>
     </section>

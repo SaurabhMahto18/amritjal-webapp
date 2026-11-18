@@ -55,7 +55,6 @@ import CustomerMonthlyCardSection from "../components/customer-details/tabs/Cust
 import CustomerDeliverySection from "../components/customer-details/tabs/CustomerDeliverySection";
 import CustomerLedgerSection from "../components/customer-details/tabs/CustomerLedgerSection";
 import CustomerLeavesSection from "../components/customer-details/tabs/CustomerLeavesSection";
-import CustomerUnbalancedProductsSection from "../components/customer-details/tabs/CustomerUnbalancedProductsSection";
 
 
 
@@ -150,83 +149,6 @@ async function fetchCustomerDeliveries(customerId) {
 }
 
 
-async function fetchCustomerUnbalancedProducts(customerId, businessId) {
-  if (!customerId || !businessId) {
-    throw new Error("Customer or business information is missing.");
-  }
-
-  // Read only this customer's delivered and returned jar movements.
-  const { data: movements, error: movementError } = await supabase
-    .from("jar_transactions")
-    .select("product_id, movement_type, quantity")
-    .eq("business_id", businessId)
-    .eq("customer_id", customerId)
-    .in("movement_type", ["delivered", "returned"]);
-
-  if (movementError) throw movementError;
-
-  const totals = new Map();
-
-  for (const movement of movements || []) {
-    const productId = movement.product_id;
-    if (!productId) continue;
-
-    if (!totals.has(productId)) {
-      totals.set(productId, {
-        totalDelivered: 0,
-        totalReturned: 0,
-      });
-    }
-
-    const current = totals.get(productId);
-    const quantity = Number(movement.quantity || 0);
-
-    if (!Number.isFinite(quantity)) continue;
-
-    if (movement.movement_type === "delivered") {
-      current.totalDelivered += quantity;
-    } else if (movement.movement_type === "returned") {
-      current.totalReturned += quantity;
-    }
-  }
-
-  const productIds = [...totals.keys()];
-
-  if (productIds.length === 0) return [];
-
-  // Fetch product names and units in one query.
-  const { data: productRows, error: productError } = await supabase
-    .from("products")
-    .select("id, name, unit")
-    .eq("business_id", businessId)
-    .in("id", productIds);
-
-  if (productError) throw productError;
-
-  const productMap = new Map(
-    (productRows || []).map((product) => [product.id, product])
-  );
-
-  return productIds
-    .map((productId) => {
-      const total = totals.get(productId);
-      const product = productMap.get(productId);
-
-      return {
-        id: productId,
-        productId,
-        name: product?.name || "Unknown Product",
-        productName: product?.name || "Unknown Product",
-        unit: product?.unit || "jar",
-        totalDelivered: total.totalDelivered,
-        totalReturned: total.totalReturned,
-        // Alias supports the existing customer-tab component.
-        totalReceived: total.totalReturned,
-        balance: total.totalDelivered - total.totalReturned,
-      };
-    })
-    .sort((a, b) => a.productName.localeCompare(b.productName));
-}
 
 
 const inputClass =
@@ -1468,13 +1390,7 @@ export default function CustomerDetailPage() {
           />
         );
 
-      case "Tab Unbalanced Products":
-        return (
-          <CustomerUnbalancedProductsSection
-            customer={customer}
-            products={[]}
-          />
-        );
+      
 
       default:
         return (
@@ -1505,7 +1421,7 @@ export default function CustomerDetailPage() {
         <>
           <Link
             to="/customers"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-teal-700"
+            className="hidden items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-teal-700 sm:inline-flex"
           >
             <ArrowLeft size={17} />
             Back to Customers
@@ -1592,17 +1508,19 @@ export default function CustomerDetailPage() {
         ) : null
       }
     >
-      <CustomerDetailContent
-        activeMenuItem={activeMenuItem}
-        customerName={customerName}
-      >
-        {renderSection()}
-      </CustomerDetailContent>
+      <div className="pb-24 sm:pb-0">
+        <CustomerDetailContent
+          activeMenuItem={activeMenuItem}
+          customerName={customerName}
+        >
+          {renderSection()}
+        </CustomerDetailContent>
 
-      <footer className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
-        <CheckCircle2 size={14} />
-        Amrit Jal · Customer Account
-      </footer>
+        <footer className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
+          <CheckCircle2 size={14} />
+          Amrit Jal · Customer Account
+        </footer>
+      </div>
     </CustomerDetailLayout>
   );
 }
