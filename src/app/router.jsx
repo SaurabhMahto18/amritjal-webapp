@@ -4,6 +4,7 @@ import {
   Route,
   Routes,
   Navigate,
+  Router,
 } from "react-router-dom";
 
 // ========================================
@@ -185,7 +186,7 @@ import SmsSettingsPage from "../features/sms/pages/SmsSettingsPage";
 // ========================================
 
 import EventsPage from "../features/events/pages/EventsPage";
-
+import EventDetailsPage from "../features/events/pages/EventDetailsPage";
 // ========================================
 // PLACEHOLDER PAGE
 // ========================================
@@ -475,6 +476,10 @@ export default function AppRouter() {
               element={<EventsPage />}
             />
 
+            <Route
+              path="/events/:eventId"
+              element={<EventDetailsPage />}
+            />
             {/* Load / Unload */}
 
             <Route

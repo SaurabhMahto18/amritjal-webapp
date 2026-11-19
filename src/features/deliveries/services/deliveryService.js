@@ -1,27 +1,24 @@
 import { supabase } from "../../../lib/supabase/client";
-import {
-  getCurrentBusinessId,
-} from "../../auth/services/businessAccessService";
+import { getCurrentBusinessId } from "../../auth/services/businessAccessService";
 
 const TABLES = {
   deliveries: "deliveries",
   deliveryItems: "delivery_items",
   customers: "customers",
   businesses: "businesses",
-  employees: "employees",
+  employees: "staff_employees",
   products: "products",
   ratePlans: "customer_rate_plans",
   jars: "jar_transactions",
   payments: "payments",
   groups: "customer_groups",
   memberships: "customer_group_members",
+  events: "events",
 };
-
 
 async function getBusinessId() {
   return getCurrentBusinessId();
 }
-
 
 function notifyJarUpdate() {
   if (typeof window !== "undefined") {
@@ -30,11 +27,11 @@ function notifyJarUpdate() {
   }
 }
 
-
 function normalizeDelivery(row, items = []) {
   return {
     id: row.id,
     businessId: row.business_id,
+    eventId: row.event_id || null,
     customerId: row.customer_id,
     customerName: row.customers?.name || "Unknown Customer",
     customerPhone: row.customers?.phone || "",
@@ -46,7 +43,7 @@ function normalizeDelivery(row, items = []) {
     amount: Number(row.amount || 0),
     shift: row.delivery_shift || row.shift || "",
     deliveredBy: row.delivered_by || "",
-    deliveryPerson: row.employees?.full_name || row.delivery_person || "",
+    deliveryPerson: row.delivery_person || "",
     notes: row.notes || "",
     createdAt: row.created_at || null,
     items,
@@ -56,6 +53,7 @@ function normalizeDelivery(row, items = []) {
 const DELIVERY_SELECT = `
   id,
   business_id,
+  event_id,
   customer_id,
   delivery_date,
   jar_quantity,
@@ -68,8 +66,7 @@ const DELIVERY_SELECT = `
   delivered_by,
   delivery_person,
   created_at,
-  customers!inner(name, phone, area),
-  employees:employees!deliveries_delivered_by_business_id_fkey(full_name)
+  customers!inner(name, phone, area)
 `;
 
 const deliveryService = {
@@ -83,18 +80,18 @@ const deliveryService = {
     const { data, error } = await supabase
       .from(TABLES.customers)
       .select(`
-      id,
-      code,
-      name,
-      phone,
-      address,
-      area,
-      jar_rate,
-      opening_balance,
-      group_id,
-      status,
-      archived
-    `)
+        id,
+        code,
+        name,
+        phone,
+        address,
+        area,
+        jar_rate,
+        opening_balance,
+        group_id,
+        status,
+        archived
+      `)
       .eq("business_id", businessId)
       .eq("archived", false)
       .order("name");
@@ -106,14 +103,12 @@ const deliveryService = {
       .map((customer) => ({
         id: customer.id,
         code: customer.code || "",
-        name: customer.name,
+        name: customer.name || "",
         phone: customer.phone || "",
         address: customer.address || "",
         area: customer.area || "",
         jarRate: Number(customer.jar_rate || 0),
         openingBalance: Number(customer.opening_balance || 0),
-
-        // Customer group information
         group_id: customer.group_id || "",
         groupId: customer.group_id || "",
       }));
@@ -121,6 +116,7 @@ const deliveryService = {
 
   // ------------------------------------------
   // GET EMPLOYEES
+  // Source: public.staff_employees
   // ------------------------------------------
 
   async getEmployees() {
@@ -128,21 +124,20 @@ const deliveryService = {
 
     const { data, error } = await supabase
       .from(TABLES.employees)
-      .select("id, full_name, phone, job_title, status")
+      .select("id, business_id, name, phone, role")
       .eq("business_id", businessId)
-      .order("full_name");
+      .order("name", { ascending: true });
 
     if (error) throw error;
 
-    return (data || [])
-      .filter((employee) => employee.status !== "inactive")
-      .map((employee) => ({
-        id: employee.id,
-        name: employee.full_name || "",
-        phone: employee.phone || "",
-        role: employee.job_title || "",
-        status: employee.status,
-      }));
+    return (data || []).map((employee) => ({
+      id: employee.id,
+      name: employee.name || "",
+      full_name: employee.name || "",
+      phone: employee.phone || "",
+      role: employee.role || "",
+      status: "active",
+    }));
   },
 
   // ------------------------------------------
@@ -178,7 +173,11 @@ const deliveryService = {
   // CUSTOMER PRODUCT RATE PLANS
   // ------------------------------------------
 
-  async getCustomerRatePlans(customerId, deliveryDate, periodStart = null) {
+  async getCustomerRatePlans(
+    customerId,
+    deliveryDate,
+    periodStart = null
+  ) {
     if (!customerId) return [];
 
     if (
@@ -200,20 +199,19 @@ const deliveryService = {
     let query = supabase
       .from(TABLES.ratePlans)
       .select(`
-      id,
-      customer_id,
-      product_id,
-      unit_price,
-      default_quantity,
-      effective_from,
-      effective_to
-    `)
+        id,
+        customer_id,
+        product_id,
+        unit_price,
+        default_quantity,
+        effective_from,
+        effective_to
+      `)
       .eq("business_id", businessId)
       .eq("customer_id", customerId);
 
     if (deliveryDate) {
       const rangeStart = periodStart || deliveryDate;
-      
       const rangeEnd = deliveryDate;
 
       query = query.or(
@@ -234,7 +232,6 @@ const deliveryService = {
 
     if (error) throw error;
 
-    // Keep the latest applicable plan for each product.
     const latestPlanByProduct = new Map();
 
     for (const plan of data || []) {
@@ -246,8 +243,9 @@ const deliveryService = {
     return Array.from(latestPlanByProduct.values());
   },
 
-
-
+  // ------------------------------------------
+  // BATCH CUSTOMER PRODUCT RATE PLANS
+  // ------------------------------------------
 
   async getCustomerRatePlansForCustomers(
     customerIds,
@@ -275,21 +273,20 @@ const deliveryService = {
     }
 
     const businessId = await getBusinessId();
-
     const rangeStart = periodStart || deliveryDate;
     const rangeEnd = deliveryDate;
 
     const { data, error } = await supabase
       .from(TABLES.ratePlans)
       .select(`
-      id,
-      customer_id,
-      product_id,
-      unit_price,
-      default_quantity,
-      effective_from,
-      effective_to
-    `)
+        id,
+        customer_id,
+        product_id,
+        unit_price,
+        default_quantity,
+        effective_from,
+        effective_to
+      `)
       .eq("business_id", businessId)
       .in("customer_id", uniqueCustomerIds)
       .or(
@@ -328,12 +325,15 @@ const deliveryService = {
     return result;
   },
 
-
   // ------------------------------------------
   // GET ALL DELIVERIES
   // ------------------------------------------
 
-  async getAll({ date = "", customerId = "" } = {}) {
+  async getAll({
+    date = "",
+    customerId = "",
+    eventId = "",
+  } = {}) {
     const businessId = await getBusinessId();
 
     let query = supabase
@@ -342,6 +342,10 @@ const deliveryService = {
       .eq("business_id", businessId)
       .order("delivery_date", { ascending: false })
       .order("created_at", { ascending: false });
+
+    if (eventId) {
+      query = query.eq("event_id", eventId);
+    }
 
     if (date) {
       query = query.eq("delivery_date", date);
@@ -498,21 +502,22 @@ const deliveryService = {
   },
 
   // ------------------------------------------
-  // CREATE DELIVERY
+  // CREATE DELIVERY / EVENT BOOKING
   // ------------------------------------------
 
   async create(input) {
     const businessId = await getBusinessId();
 
     const customerId = input.customerId;
+    const eventId = input.eventId || null;
     const date = input.date;
     const shift = input.shift || "morning";
     const employeeId = input.deliveredBy || null;
     const notes = input.notes?.trim() || null;
 
-    const items = (Array.isArray(input.items) ? input.items : []).filter(
-      (item) => Number(item.quantity) > 0
-    );
+    const items = (
+      Array.isArray(input.items) ? input.items : []
+    ).filter((item) => Number(item.quantity) > 0);
 
     if (!customerId) {
       throw new Error("Please select a customer.");
@@ -544,27 +549,48 @@ const deliveryService = {
       throw new Error("The selected customer is unavailable.");
     }
 
-    // Verify employee.
+    // Verify event belongs to this business and customer.
+
+    if (eventId) {
+      const { data: event, error: eventError } = await supabase
+        .from(TABLES.events)
+        .select("id, customer_id")
+        .eq("id", eventId)
+        .eq("business_id", businessId)
+        .maybeSingle();
+
+      if (eventError) throw eventError;
+
+      if (!event) {
+        throw new Error("The selected event is unavailable.");
+      }
+
+      if (event.customer_id !== customerId) {
+        throw new Error(
+          "The selected customer does not belong to this event."
+        );
+      }
+    }
+
+    // Verify employee from staff_employees.
 
     let employeeName = input.deliveryPerson?.trim() || null;
 
     if (employeeId) {
       const { data: employee, error } = await supabase
         .from(TABLES.employees)
-        .select("id, full_name, status")
+        .select("id, business_id, name, phone, role")
         .eq("id", employeeId)
         .eq("business_id", businessId)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (!employee || employee.status === "inactive") {
-        throw new Error(
-          "The selected employee is unavailable or inactive."
-        );
+      if (!employee) {
+        throw new Error("The selected employee is unavailable.");
       }
 
-      employeeName = employee.full_name || "";
+      employeeName = employee.name || "";
     }
 
     // Load assigned product plans.
@@ -678,7 +704,6 @@ const deliveryService = {
     );
 
     const firstReturnable = returnableItems[0];
-
     const legacyRate = firstReturnable?.unitPrice ?? 0;
 
     // Create main delivery record.
@@ -688,6 +713,7 @@ const deliveryService = {
       .insert({
         business_id: businessId,
         customer_id: customerId,
+        event_id: eventId,
         delivery_date: date,
         jar_quantity: jarQuantity,
         jars_received: jarsReceived,
@@ -750,8 +776,7 @@ const deliveryService = {
         }
       });
 
-    // Insert child records.
-    // If an insert fails, attempt compensating rollback.
+    // Insert child records with compensating rollback.
 
     try {
       const { error: itemError } = await supabase
@@ -774,13 +799,23 @@ const deliveryService = {
         .eq("business_id", businessId)
         .eq("delivery_id", delivery.id);
 
+      const { error: rollbackItemsError } = await supabase
+        .from(TABLES.deliveryItems)
+        .delete()
+        .eq("business_id", businessId)
+        .eq("delivery_id", delivery.id);
+
       const { error: rollbackDeliveryError } = await supabase
         .from(TABLES.deliveries)
         .delete()
         .eq("business_id", businessId)
         .eq("id", delivery.id);
 
-      if (rollbackJarError || rollbackDeliveryError) {
+      if (
+        rollbackJarError ||
+        rollbackItemsError ||
+        rollbackDeliveryError
+      ) {
         throw new Error(
           `${err.message}. Automatic rollback was incomplete; verify delivery ${delivery.id} before retrying.`
         );
@@ -823,11 +858,17 @@ const deliveryService = {
 
     if (jarError) throw jarError;
 
+    // Remove delivery items explicitly.
 
+    const { error: itemError } = await supabase
+      .from(TABLES.deliveryItems)
+      .delete()
+      .eq("business_id", businessId)
+      .eq("delivery_id", id);
 
+    if (itemError) throw itemError;
 
-
-    // delivery_items should be removed through existing FK cascade.
+    // Delete delivery.
 
     const { data, error } = await supabase
       .from(TABLES.deliveries)
@@ -890,7 +931,9 @@ const deliveryService = {
       }
 
       if (seenProducts.has(productId)) {
-        throw new Error("A product appears more than once in this delivery.");
+        throw new Error(
+          "A product appears more than once in this delivery."
+        );
       }
 
       seenProducts.add(productId);
@@ -920,13 +963,16 @@ const deliveryService = {
       };
     });
 
-    const { data, error } = await supabase.rpc("save_bulk_delivery", {
-      p_customer_id: customerId,
-      p_delivery_date: date,
-      p_shift: shift,
-      p_items: payload,
-      p_notes: notes || null,
-    });
+    const { data, error } = await supabase.rpc(
+      "save_bulk_delivery",
+      {
+        p_customer_id: customerId,
+        p_delivery_date: date,
+        p_shift: shift,
+        p_items: payload,
+        p_notes: notes || null,
+      }
+    );
 
     if (error) {
       throw new Error(
@@ -941,4 +987,3 @@ const deliveryService = {
 };
 
 export default deliveryService;
-

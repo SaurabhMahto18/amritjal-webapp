@@ -1,4 +1,3 @@
-
 import { CalendarDays, Filter, X } from "lucide-react";
 
 const statusOptions = [
@@ -22,18 +21,14 @@ const durationOptions = [
   ["past", "Past"],
 ];
 
-// ========================================
-// CHIP GROUP
-// ========================================
-
 function ChipGroup({ title, options, value, onChange }) {
   return (
-    <div>
-      <p className="mb-2 text-sm font-semibold text-slate-600">
+    <div className="min-w-0">
+      <p className="mb-1.5 text-xs font-semibold text-slate-600 sm:mb-2 sm:text-sm">
         {title}
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {options.map(([key, label]) => {
           const active = value === key;
 
@@ -43,7 +38,7 @@ function ChipGroup({ title, options, value, onChange }) {
               type="button"
               onClick={() => onChange(active ? "" : key)}
               aria-pressed={active}
-              className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+              className={`min-h-8 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-4 transition sm:min-h-9 sm:px-4 sm:py-2 sm:text-sm ${
                 active
                   ? "border-[#087F8C] bg-[#087F8C] text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-600 hover:border-[#087F8C] hover:bg-[#DDF4F1] hover:text-[#087F8C]"
@@ -58,15 +53,7 @@ function ChipGroup({ title, options, value, onChange }) {
   );
 }
 
-// ========================================
-// EVENT FILTERS
-// ========================================
-
-export default function EventFilters({
-  filters,
-  setFilters,
-  onClear,
-}) {
+export default function EventFilters({ filters, setFilters, onClear }) {
   const set = (key, value) => {
     setFilters((previous) => ({
       ...previous,
@@ -83,95 +70,82 @@ export default function EventFilters({
   ].filter(Boolean).length;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-
-      {/* FILTER HEADER */}
-
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-[#DDF4F1] text-[#087F8C]">
-            <Filter size={18} />
+    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-5">
+      {/* Compact filter header */}
+      <div className="mb-3 flex items-center justify-between gap-2 sm:mb-5 sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#DDF4F1] text-[#087F8C] sm:size-9 sm:rounded-xl">
+            <Filter size={16} className="sm:hidden" />
+            <Filter size={18} className="hidden sm:block" />
           </div>
 
-          <div>
-            <h2 className="text-sm font-bold text-[#102D3A]">
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold leading-4 text-[#102D3A] sm:text-sm">
               Event Filters
             </h2>
-
-            <p className="text-xs text-slate-400">
+            <p className="hidden text-xs text-slate-400 sm:block">
               Narrow down events using the options below.
             </p>
           </div>
         </div>
 
         {activeFilterCount > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="rounded-full bg-[#DDF4F1] px-3 py-1 text-xs font-semibold text-[#087F8C]">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+            <span className="rounded-full bg-[#DDF4F1] px-2 py-1 text-[10px] font-semibold text-[#087F8C] sm:px-3 sm:text-xs">
               {activeFilterCount} active
             </span>
 
             <button
               type="button"
               onClick={onClear}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+              className="inline-flex min-h-7 items-center gap-1 rounded-lg px-1.5 text-[10px] font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 sm:min-h-9 sm:gap-1.5 sm:px-3 sm:py-2 sm:text-sm"
             >
-              <X size={15} />
-              Clear filters
+              <X size={13} className="sm:size-[15px]" />
+              Clear
+              <span className="hidden sm:inline">filters</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* FILTER OPTIONS */}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-        {/* EVENT DATE */}
-
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-600">
-            <CalendarDays size={16} className="text-[#087F8C]" />
+      {/* Filter options */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+        <div className="min-w-0">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-600 sm:mb-2 sm:gap-2 sm:text-sm">
+            <CalendarDays size={14} className="text-[#087F8C] sm:size-4" />
             Event Date
           </p>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs text-slate-400">
+              <span className="mb-1 block text-[10px] text-slate-400 sm:mb-1.5 sm:text-xs">
                 From date
               </span>
-
               <input
                 aria-label="Event date from"
                 type="date"
                 value={filters.from || ""}
                 max={filters.to || undefined}
-                onChange={(event) =>
-                  set("from", event.target.value)
-                }
-                className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none transition focus:border-[#087F8C] focus:bg-white focus:ring-4 focus:ring-[#087F8C]/10"
+                onChange={(event) => set("from", event.target.value)}
+                className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-700 outline-none transition focus:border-[#087F8C] focus:bg-white focus:ring-2 focus:ring-[#087F8C]/10 sm:h-auto sm:rounded-xl sm:px-3 sm:py-3 sm:text-sm sm:focus:ring-4"
               />
             </label>
 
             <label className="min-w-0">
-              <span className="mb-1.5 block text-xs text-slate-400">
+              <span className="mb-1 block text-[10px] text-slate-400 sm:mb-1.5 sm:text-xs">
                 To date
               </span>
-
               <input
                 aria-label="Event date to"
                 type="date"
                 value={filters.to || ""}
                 min={filters.from || undefined}
-                onChange={(event) =>
-                  set("to", event.target.value)
-                }
-                className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none transition focus:border-[#087F8C] focus:bg-white focus:ring-4 focus:ring-[#087F8C]/10"
+                onChange={(event) => set("to", event.target.value)}
+                className="h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-700 outline-none transition focus:border-[#087F8C] focus:bg-white focus:ring-2 focus:ring-[#087F8C]/10 sm:h-auto sm:rounded-xl sm:px-3 sm:py-3 sm:text-sm sm:focus:ring-4"
               />
             </label>
           </div>
         </div>
-
-        {/* EVENT STATUS */}
 
         <ChipGroup
           title="Event Status"
@@ -180,16 +154,12 @@ export default function EventFilters({
           onChange={(value) => set("status", value)}
         />
 
-        {/* DURATION */}
-
         <ChipGroup
           title="Duration Status"
           options={durationOptions}
           value={filters.duration}
           onChange={(value) => set("duration", value)}
         />
-
-        {/* PAYMENT STATUS */}
 
         <ChipGroup
           title="Payment Status"
