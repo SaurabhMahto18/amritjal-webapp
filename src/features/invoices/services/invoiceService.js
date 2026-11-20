@@ -241,6 +241,60 @@ export async function createInvoice({
   return normalizeInvoice(invoice);
 }
 
+
+
+
+
+export async function updateInvoice({
+  invoiceId,
+  businessId,
+  invoiceData,
+  items,
+}) {
+  if (!invoiceId || !businessId) {
+    throw new Error("Invoice and business are required.");
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("At least one invoice item is required.");
+  }
+
+  const lines = items.map((item) => ({
+    description: String(item.description || "").trim(),
+    quantity: Number(item.quantity || 0),
+    unit_price: Number(item.unit_price ?? item.rate ?? 0),
+    product_id: item.product_id || null,
+    source_delivery_item_id: item.source_delivery_item_id || null,
+  }));
+
+  const { data, error } = await supabase.rpc(
+    "update_invoice_atomic",
+    {
+      p_invoice_id: invoiceId,
+      p_business_id: businessId,
+      p_invoice_date: invoiceData.invoice_date,
+      p_period_start: invoiceData.period_start,
+      p_period_end: invoiceData.period_end,
+      p_due_date: invoiceData.due_date || null,
+      p_notes: invoiceData.notes || null,
+      p_discount_amount: Number(invoiceData.discount_amount || 0),
+      p_lines: lines,
+    }
+  );
+
+  if (error) {
+    throw new Error(error.message || "Unable to update invoice.");
+  }
+
+  const updated = Array.isArray(data) ? data[0] : data;
+
+  if (!updated?.id) {
+    throw new Error("Invoice update did not return an invoice.");
+  }
+
+  return normalizeInvoice(updated);
+}
+
 /**
  * Load invoice list for a business.
  *
@@ -467,6 +521,7 @@ const invoiceService = {
   getInvoices,
   getInvoiceById,
   getCustomerInvoices,
+  updateInvoice,
 };
 
 export default invoiceService;

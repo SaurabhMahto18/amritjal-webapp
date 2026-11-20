@@ -1,3 +1,4 @@
+
 import {
   useCallback,
   useEffect,
@@ -21,6 +22,8 @@ import {
   RefreshCw,
   Info,
   Wallet,
+  Minus,
+  Plus,
 } from "lucide-react";
 
 import { supabase } from "../../../lib/supabase";
@@ -34,11 +37,11 @@ import InvoicePreview from "../components/InvoicePreview";
 const getToday = () => {
   const date = new Date();
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 };
 
 const currency = (value) =>
@@ -69,9 +72,7 @@ const getDeliveryDate = (delivery) =>
 const formatDate = (value) => {
   if (!value) return "—";
 
-  const [year, month, day] = String(value)
-    .slice(0, 10)
-    .split("-");
+  const [year, month, day] = String(value).slice(0, 10).split("-");
 
   if (!year || !month || !day) return "—";
 
@@ -90,43 +91,42 @@ const SEO = {
 };
 
 // ========================================
-// REUSABLE SECTION HEADING
+// STYLES
 // ========================================
 
-function StepHeading({
-  number,
-  title,
-  description,
-  icon: Icon,
-}) {
+const sectionClass =
+  "min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-6";
+
+const inputClass =
+  "min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50";
+
+// ========================================
+// REUSABLE COMPONENTS
+// ========================================
+
+function StepHeading({ number, title, description, icon: Icon }) {
   return (
-    <div className="mb-5 flex items-start gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#E5F5F2] text-[#087F8C]">
-        <Icon size={20} />
+    <div className="mb-3 flex min-w-0 items-start gap-2.5 sm:mb-5 sm:gap-3">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#E5F5F2] text-[#087F8C] sm:size-10">
+        <Icon size={19} />
       </div>
 
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#087F8C]">
-            STEP {number}
-          </span>
-        </div>
+      <div className="min-w-0 flex-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#087F8C]">
+          STEP {number}
+        </span>
 
-        <h2 className="mt-0.5 text-base font-bold text-slate-900">
+        <h2 className="mt-0.5 text-sm font-bold leading-5 text-slate-900 sm:text-base">
           {title}
         </h2>
 
-        <p className="mt-1 text-sm leading-5 text-slate-500">
+        <p className="mt-0.5 text-[11px] leading-4 text-slate-500 sm:mt-1 sm:text-sm sm:leading-5">
           {description}
         </p>
       </div>
     </div>
   );
 }
-
-// ========================================
-// INFO MESSAGE
-// ========================================
 
 function Message({ children, tone = "info" }) {
   const styles = {
@@ -141,10 +141,87 @@ function Message({ children, tone = "info" }) {
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-sm leading-5 ${styles[tone]}`}
+      className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-5 sm:text-sm ${styles[tone]}`}
     >
-      <Icon size={17} className="mt-0.5 shrink-0" />
-      <div>{children}</div>
+      <Icon size={16} className="mt-0.5 shrink-0" />
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// ========================================
+// LOST JAR COUNTER
+// ========================================
+
+function LostJarCard({
+  label,
+  value,
+  setter,
+  rate,
+  field,
+  saving,
+}) {
+  const quantity = Math.max(0, Number(value) || 0);
+  const charge = quantity * rate;
+
+  const decrease = () => {
+    setter(String(Math.max(0, quantity - 1)));
+  };
+
+  const increase = () => {
+    setter(String(quantity + 1));
+  };
+
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:block sm:p-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold text-slate-800 sm:text-sm">
+          {label}
+        </p>
+
+        <p className="mt-1 text-[10px] text-slate-400 sm:text-xs">
+          {currency(rate)} / jar
+        </p>
+
+        <p className="mt-1 text-xs font-bold text-[#087F68]">
+          {currency(charge)}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5 sm:mt-3 sm:justify-between">
+        <button
+          type="button"
+          disabled={saving || quantity <= 0}
+          onClick={decrease}
+          aria-label={`Decrease ${label} lost quantity`}
+          className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Minus size={15} />
+        </button>
+
+        <input
+          id={field}
+          type="number"
+          min="0"
+          step="1"
+          inputMode="numeric"
+          value={value}
+          disabled={saving}
+          onChange={(event) => setter(event.target.value)}
+          aria-label={`${label} lost quantity`}
+          className="h-9 w-11 rounded-lg border border-slate-200 bg-white px-1 text-center text-sm font-bold tabular-nums outline-none focus:border-[#087F8C] focus:ring-2 focus:ring-[#087F8C]/10 disabled:bg-slate-50 sm:w-14"
+        />
+
+        <button
+          type="button"
+          disabled={saving}
+          onClick={increase}
+          aria-label={`Increase ${label} lost quantity`}
+          className="flex size-9 items-center justify-center rounded-lg bg-[#087F8C] text-white transition hover:bg-[#066B76] disabled:opacity-50"
+        >
+          <Plus size={15} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -177,16 +254,11 @@ export default function CreateInvoicePage() {
   const [notes, setNotes] = useState("");
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
 
-  // Optional invoice charges.
-  // Jar rates come from business invoice settings.
-
   const [thermalLostQty, setThermalLostQty] = useState("0");
   const [capsuleLostQty, setCapsuleLostQty] = useState("0");
   const [dispenserLostQty, setDispenserLostQty] = useState("0");
 
   const [additionalCharges, setAdditionalCharges] = useState("0");
-
-  // Discount input
   const [discountAmountInput, setDiscountAmountInput] = useState("0");
 
   const [invoiceSettings, setInvoiceSettings] = useState({
@@ -241,13 +313,8 @@ export default function CreateInvoicePage() {
     robots.setAttribute("name", "robots");
     robots.setAttribute("content", SEO.robots);
 
-    if (!descriptionMeta) {
-      document.head.appendChild(description);
-    }
-
-    if (!robotsMeta) {
-      document.head.appendChild(robots);
-    }
+    if (!descriptionMeta) document.head.appendChild(description);
+    if (!robotsMeta) document.head.appendChild(robots);
 
     return () => {
       document.title = previousTitle;
@@ -309,34 +376,31 @@ export default function CreateInvoicePage() {
         throw new Error("Business account was not found.");
       }
 
-      const [
-        customerResult,
-        groupResult,
-        settingsResult,
-      ] = await Promise.all([
-        supabase
-          .from("customers")
-          .select(
-            "id, name, phone, address, jar_rate, opening_balance, group_id"
-          )
-          .eq("business_id", business.id)
-          .eq("archived", false)
-          .order("name", { ascending: true }),
+      const [customerResult, groupResult, settingsResult] =
+        await Promise.all([
+          supabase
+            .from("customers")
+            .select(
+              "id, name, phone, address, jar_rate, opening_balance, group_id"
+            )
+            .eq("business_id", business.id)
+            .eq("archived", false)
+            .order("name", { ascending: true }),
 
-        supabase
-          .from("customer_groups")
-          .select("id, name")
-          .eq("business_id", business.id)
-          .order("name", { ascending: true }),
+          supabase
+            .from("customer_groups")
+            .select("id, name")
+            .eq("business_id", business.id)
+            .order("name", { ascending: true }),
 
-        supabase
-          .from("business_invoice_settings")
-          .select(
-            "thermal_jar_charge, capsule_jar_charge, dispenser_jar_charge"
-          )
-          .eq("business_id", business.id)
-          .maybeSingle(),
-      ]);
+          supabase
+            .from("business_invoice_settings")
+            .select(
+              "thermal_jar_charge, capsule_jar_charge, dispenser_jar_charge"
+            )
+            .eq("business_id", business.id)
+            .maybeSingle(),
+        ]);
 
       if (customerResult.error) throw customerResult.error;
       if (groupResult.error) throw groupResult.error;
@@ -475,7 +539,6 @@ export default function CreateInvoicePage() {
           .order("delivery_date", { ascending: true });
 
       if (deliveryFetchError) throw deliveryFetchError;
-
       if (requestId !== deliveryRequestRef.current) return;
 
       const rows = deliveryData ?? [];
@@ -495,12 +558,9 @@ export default function CreateInvoicePage() {
           .in("delivery_id", deliveryIds);
 
       if (itemsError) throw itemsError;
-
       if (requestId !== deliveryRequestRef.current) return;
 
-      const itemIds = (deliveryItems ?? []).map(
-        (item) => item.id
-      );
+      const itemIds = (deliveryItems ?? []).map((item) => item.id);
 
       let billedItemIds = new Set();
 
@@ -513,7 +573,6 @@ export default function CreateInvoicePage() {
             .in("source_delivery_item_id", itemIds);
 
         if (invoiceLinesError) throw invoiceLinesError;
-
         if (requestId !== deliveryRequestRef.current) return;
 
         billedItemIds = new Set(
@@ -523,8 +582,7 @@ export default function CreateInvoicePage() {
         );
       }
 
-      // Preserve the existing rule: exclude a delivery if
-      // any of its delivery items has already been invoiced.
+      // Existing rule: exclude delivery if any item is billed.
 
       const billedDeliveryIds = new Set(
         (deliveryItems ?? [])
@@ -533,9 +591,7 @@ export default function CreateInvoicePage() {
       );
 
       const eligibleDeliveries = rows
-        .filter(
-          (delivery) => !billedDeliveryIds.has(delivery.id)
-        )
+        .filter((delivery) => !billedDeliveryIds.has(delivery.id))
         .filter((delivery) =>
           (deliveryItems ?? []).some(
             (item) => item.delivery_id === delivery.id
@@ -573,9 +629,7 @@ export default function CreateInvoicePage() {
   // ======================================
 
   const selectedDeliveries = useMemo(() => {
-    const selectedIds = new Set(
-      selectedDeliveryIds.map(String)
-    );
+    const selectedIds = new Set(selectedDeliveryIds.map(String));
 
     return deliveries.filter((delivery) =>
       selectedIds.has(String(getDeliveryId(delivery)))
@@ -585,8 +639,7 @@ export default function CreateInvoicePage() {
   const subtotal = useMemo(
     () =>
       selectedDeliveries.reduce(
-        (total, delivery) =>
-          total + getDeliveryAmount(delivery),
+        (total, delivery) => total + getDeliveryAmount(delivery),
         0
       ),
     [selectedDeliveries]
@@ -595,8 +648,7 @@ export default function CreateInvoicePage() {
   const totalJars = useMemo(
     () =>
       selectedDeliveries.reduce(
-        (total, delivery) =>
-          total + getDeliveryQuantity(delivery),
+        (total, delivery) => total + getDeliveryQuantity(delivery),
         0
       ),
     [selectedDeliveries]
@@ -619,9 +671,7 @@ export default function CreateInvoicePage() {
       Math.max(0, Number(dispenserLostQty) || 0) *
       invoiceSettings.dispenser_jar_charge;
 
-    return Number(
-      (thermal + capsule + dispenser).toFixed(2)
-    );
+    return Number((thermal + capsule + dispenser).toFixed(2));
   }, [
     thermalLostQty,
     capsuleLostQty,
@@ -660,10 +710,7 @@ export default function CreateInvoicePage() {
   );
 
   const estimatedInvoiceTotal = Number(
-    Math.max(
-      0,
-      discountableSubtotal - discountAmount
-    ).toFixed(2)
+    Math.max(0, discountableSubtotal - discountAmount).toFixed(2)
   );
 
   // ======================================
@@ -724,14 +771,9 @@ export default function CreateInvoicePage() {
   }
 
   function selectAllDeliveries() {
-    const allIds = deliveries
-      .map(getDeliveryId)
-      .filter(Boolean);
+    const allIds = deliveries.map(getDeliveryId).filter(Boolean);
 
-    setSelectedDeliveryIds(
-      allDeliveriesSelected ? [] : allIds
-    );
-
+    setSelectedDeliveryIds(allDeliveriesSelected ? [] : allIds);
     setPageError("");
   }
 
@@ -775,8 +817,6 @@ export default function CreateInvoicePage() {
       return;
     }
 
-    // Validate lost-jar quantities.
-
     const lostJarQuantities = [
       thermalLostQty,
       capsuleLostQty,
@@ -797,8 +837,6 @@ export default function CreateInvoicePage() {
       return;
     }
 
-    // Validate manual additional charge.
-
     if (
       additionalCharges === "" ||
       !Number.isFinite(Number(additionalCharges)) ||
@@ -809,8 +847,6 @@ export default function CreateInvoicePage() {
       );
       return;
     }
-
-    // Validate discount.
 
     if (
       discountAmountInput.trim() !== "" &&
@@ -851,8 +887,6 @@ export default function CreateInvoicePage() {
           dispenser_jar_lost_qty: Number(dispenserLostQty),
 
           additional_charges: Number(additionalCharges),
-
-          // Discount sent to invoiceService.
           discount_amount: discountAmount,
         },
 
@@ -885,7 +919,7 @@ export default function CreateInvoicePage() {
   }
 
   // ======================================
-  // CONDITIONAL INFORMATION
+  // FORM VALIDATION STATUS
   // ======================================
 
   const canCreateInvoice =
@@ -902,58 +936,46 @@ export default function CreateInvoicePage() {
   // ======================================
 
   return (
-    <main className="min-h-screen bg-[#edf2f7] px-3 py-5 text-slate-900 sm:px-5 lg:px-8">
+    <main className="min-h-screen overflow-x-hidden bg-[#edf2f7] px-3 pb-28 pt-3 text-slate-900 sm:px-5 sm:pb-8 sm:pt-6 lg:px-8">
       <form
+        id="create-invoice-form"
         onSubmit={handleSubmit}
-        className="mx-auto w-full max-w-[1350px] space-y-5"
+        className="mx-auto flex w-full max-w-[1350px] min-w-0 flex-col gap-3 sm:gap-5"
       >
+        {/* TOP BAR */}
 
-        {/* =================================
-            TOP ACTION BAR
-            Shared title is in AppLayout
-        ================================== */}
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-2">
           <Link
             to="/invoices"
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 sm:min-h-10 sm:px-4 sm:text-sm"
           >
-            <ArrowLeft size={17} />
+            <ArrowLeft size={16} />
             Back to Invoices
           </Link>
 
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#E5F5F2] px-3 py-2 text-xs font-semibold text-[#087F8C]">
-            <FileText size={15} />
+          <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#E5F5F2] px-3 py-2 text-[11px] font-semibold text-[#087F8C] sm:text-xs">
+            <FileText size={14} />
             New Invoice
           </span>
         </div>
 
-        {/* =================================
-            ERROR MESSAGE
-        ================================== */}
+        {pageError && <Message tone="error">{pageError}</Message>}
 
-        {pageError && (
-          <Message tone="error">
-            {pageError}
-          </Message>
-        )}
+        {/* ======================================
+            STEP 1 — INVOICE DATES
+        ====================================== */}
 
-        {/* =================================
-            STEP 1 — BILLING PERIOD
-        ================================== */}
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <section className={sectionClass}>
           <StepHeading
             number="01"
             title="Invoice Dates"
-            description="Choose when the invoice is issued and which delivery period it covers."
+            description="Choose the invoice date and billing period."
             icon={CalendarDays}
           />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
             <label className="min-w-0">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+              <span className="mb-1 block text-[11px] font-semibold text-slate-700 sm:text-sm">
                 Invoice Date <span className="text-rose-500">*</span>
               </span>
 
@@ -962,19 +984,17 @@ export default function CreateInvoicePage() {
                 required
                 value={invoiceDate}
                 disabled={saving}
-                onChange={(event) =>
-                  setInvoiceDate(event.target.value)
-                }
-                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                onChange={(event) => setInvoiceDate(event.target.value)}
+                className={inputClass}
               />
 
-              <span className="mt-1 block text-xs text-slate-400">
-                Date printed on the invoice
+              <span className="mt-1 block text-[10px] text-slate-400 sm:text-xs">
+                Invoice issue date
               </span>
             </label>
 
             <label className="min-w-0">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+              <span className="mb-1 block text-[11px] font-semibold text-slate-700 sm:text-sm">
                 Billing From <span className="text-rose-500">*</span>
               </span>
 
@@ -984,15 +1004,13 @@ export default function CreateInvoicePage() {
                 value={periodStart}
                 max={periodEnd || undefined}
                 disabled={saving}
-                onChange={(event) =>
-                  setPeriodStart(event.target.value)
-                }
-                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                onChange={(event) => setPeriodStart(event.target.value)}
+                className={inputClass}
               />
             </label>
 
-            <label className="min-w-0">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+            <label className="col-span-2 min-w-0 sm:col-span-1">
+              <span className="mb-1 block text-[11px] font-semibold text-slate-700 sm:text-sm">
                 Billing To <span className="text-rose-500">*</span>
               </span>
 
@@ -1002,16 +1020,14 @@ export default function CreateInvoicePage() {
                 value={periodEnd}
                 min={periodStart || undefined}
                 disabled={saving}
-                onChange={(event) =>
-                  setPeriodEnd(event.target.value)
-                }
-                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                onChange={(event) => setPeriodEnd(event.target.value)}
+                className={inputClass}
               />
             </label>
           </div>
 
           {periodStart > periodEnd && (
-            <div className="mt-4">
+            <div className="mt-3">
               <Message tone="error">
                 Billing start date cannot be after the end date.
               </Message>
@@ -1019,53 +1035,47 @@ export default function CreateInvoicePage() {
           )}
         </section>
 
-        {/* =================================
-            STEP 2 — CUSTOMER SELECTION
-        ================================== */}
+        {/* ======================================
+            STEP 2 — CUSTOMER
+        ====================================== */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <section className={sectionClass}>
           <StepHeading
             number="02"
             title="Select Customer"
-            description="Choose a customer group first, then find the customer to bill."
+            description="Choose a group, search and select the customer."
             icon={Users}
           />
 
           {customerError && (
-            <div className="mb-4 space-y-3">
-              <Message tone="error">
-                {customerError}
-              </Message>
+            <div className="mb-3 space-y-2">
+              <Message tone="error">{customerError}</Message>
 
               <button
                 type="button"
                 onClick={loadCustomers}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[#087F8C]"
+                className="inline-flex min-h-9 items-center gap-2 text-xs font-semibold text-[#087F8C]"
               >
-                <RefreshCw size={15} />
+                <RefreshCw size={14} />
                 Retry loading customers
               </button>
             </div>
           )}
 
           {loadingCustomers ? (
-            <div className="flex min-h-24 items-center justify-center gap-2 text-sm text-slate-500">
+            <div className="flex min-h-20 items-center justify-center gap-2 text-xs text-slate-500">
               <LoaderCircle
-                size={19}
+                size={18}
                 className="animate-spin text-[#087F8C]"
               />
-              Loading customers and groups...
+              Loading customers...
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-                {/* GROUP SELECT */}
-
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                 <label className="min-w-0">
-                  <span className="mb-1.5 block text-sm font-semibold text-slate-700">
-                    Customer Group
-                    <span className="ml-1 text-rose-500">*</span>
+                  <span className="mb-1 block text-[11px] font-semibold text-slate-700 sm:text-sm">
+                    Customer Group <span className="text-rose-500">*</span>
                   </span>
 
                   <select
@@ -1074,7 +1084,7 @@ export default function CreateInvoicePage() {
                     onChange={(event) =>
                       handleGroupChange(event.target.value)
                     }
-                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                    className={inputClass}
                   >
                     <option value="">Select a group</option>
 
@@ -1086,29 +1096,24 @@ export default function CreateInvoicePage() {
                   </select>
 
                   {customerGroups.length === 0 && (
-                    <span className="mt-1.5 block text-xs text-amber-700">
-                      No groups found.{" "}
-                      <Link
-                        to="/groups/new"
-                        className="font-semibold underline"
-                      >
-                        Create a group
+                    <span className="mt-1 block text-[10px] text-amber-700">
+                      No groups.{" "}
+                      <Link to="/groups/new" className="font-semibold underline">
+                        Create one
                       </Link>
                     </span>
                   )}
                 </label>
 
-                {/* CUSTOMER SEARCH */}
-
                 <label className="min-w-0">
-                  <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  <span className="mb-1 block text-[11px] font-semibold text-slate-700 sm:text-sm">
                     Search Customer
                   </span>
 
                   <div className="relative">
                     <Search
-                      size={17}
-                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      size={15}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                     />
 
                     <input
@@ -1119,20 +1124,16 @@ export default function CreateInvoicePage() {
                       }
                       disabled={!selectedGroupId || saving}
                       placeholder={
-                        selectedGroupId
-                          ? "Name or mobile number..."
-                          : "Select a group first"
+                        selectedGroupId ? "Name or phone..." : "Select group first"
                       }
-                      className="min-h-11 w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                      className={`${inputClass} pl-8`}
                     />
                   </div>
                 </label>
               </div>
 
-              {/* CUSTOMER SELECT */}
-
-              <label className="mt-4 block">
-                <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+              <label className="mt-2.5 block sm:mt-4">
+                <span className="mb-1 block text-[11px] font-semibold text-slate-700 sm:text-sm">
                   Customer <span className="text-rose-500">*</span>
                 </span>
 
@@ -1143,7 +1144,7 @@ export default function CreateInvoicePage() {
                   onChange={(event) =>
                     handleCustomerChange(event.target.value)
                   }
-                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                  className={inputClass}
                 >
                   <option value="">
                     {!selectedGroupId
@@ -1156,53 +1157,47 @@ export default function CreateInvoicePage() {
                   {filteredCustomers.map((customer) => (
                     <option key={customer.id} value={customer.id}>
                       {customer.name}
-                      {customer.phone
-                        ? ` — ${customer.phone}`
-                        : ""}
+                      {customer.phone ? ` — ${customer.phone}` : ""}
                     </option>
                   ))}
                 </select>
 
-                {selectedGroupId &&
-                  filteredCustomers.length === 0 && (
-                    <span className="mt-1.5 block text-xs text-slate-500">
-                      {customerSearch
-                        ? "No customers match your search in this group."
-                        : "No active customers assigned to this group."}
-                    </span>
-                  )}
+                {selectedGroupId && filteredCustomers.length === 0 && (
+                  <span className="mt-1 block text-[10px] text-slate-500">
+                    {customerSearch
+                      ? "No matching customers."
+                      : "No active customers in this group."}
+                  </span>
+                )}
               </label>
             </>
           )}
 
-          {/* SELECTED CUSTOMER CARD */}
-
           {selectedCustomer && (
-            <div className="mt-5 rounded-xl border border-[#CDE9E4] bg-[#F1FAF8] p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#087F8C]">
-                    <Users size={19} />
+            <div className="mt-3 rounded-xl border border-[#CDE9E4] bg-[#F1FAF8] p-3">
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#087F8C]">
+                    <Users size={16} />
                   </div>
 
                   <div className="min-w-0">
-                    <p className="break-words font-bold text-slate-900">
+                    <p className="truncate text-xs font-bold text-slate-900 sm:text-sm">
                       {selectedCustomer.name}
                     </p>
-
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="text-[10px] text-slate-500">
                       {selectedCustomer.phone || "No mobile number"}
                     </p>
                   </div>
                 </div>
 
-                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#087F8C]">
+                <span className="max-w-[40%] shrink-0 truncate rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[#087F8C]">
                   {selectedGroup?.name || "Selected Group"}
                 </span>
               </div>
 
               {selectedCustomer.address && (
-                <p className="mt-3 border-t border-[#D9EDE8] pt-3 text-xs text-slate-500">
+                <p className="mt-2 border-t border-[#D9EDE8] pt-2 text-[10px] leading-4 text-slate-500">
                   {selectedCustomer.address}
                 </p>
               )}
@@ -1210,14 +1205,13 @@ export default function CreateInvoicePage() {
           )}
         </section>
 
-        {/* =================================
-            STEP 3 — DELIVERY SELECTION
-        ================================== */}
+        {/* ======================================
+            STEP 3 — DELIVERIES
+        ====================================== */}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-          <div className="p-4 sm:p-6">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="p-3.5 sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <StepHeading
                 number="03"
                 title="Select Deliveries"
@@ -1230,90 +1224,74 @@ export default function CreateInvoicePage() {
                   type="button"
                   disabled={saving}
                   onClick={selectAllDeliveries}
-                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[#BBDDD6] px-4 py-2 text-sm font-semibold text-[#087F8C] transition hover:bg-[#E5F5F2] disabled:opacity-50"
+                  className="inline-flex min-h-9 w-full items-center justify-center rounded-xl border border-[#BBDDD6] px-3 py-2 text-xs font-semibold text-[#087F8C] transition hover:bg-[#E5F5F2] disabled:opacity-50 sm:w-auto sm:text-sm"
                 >
-                  {allDeliveriesSelected
-                    ? "Deselect All"
-                    : "Select All"}
+                  {allDeliveriesSelected ? "Deselect All" : "Select All"}
                 </button>
               )}
             </div>
 
-            {/* NO CUSTOMER */}
-
             {!customerId && !loadingDeliveries && (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
-                <Package
-                  size={30}
-                  className="mx-auto text-slate-400"
-                />
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center">
+                <Package size={25} className="mx-auto text-slate-400" />
 
-                <p className="mt-3 font-semibold text-slate-700">
+                <p className="mt-2 text-xs font-semibold text-slate-700">
                   Select a customer first
                 </p>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-[11px] text-slate-500">
                   Eligible deliveries will appear here.
                 </p>
               </div>
             )}
 
-            {/* LOADING */}
-
             {loadingDeliveries && (
-              <div className="flex min-h-36 flex-col items-center justify-center gap-2 text-sm text-slate-500">
+              <div className="flex min-h-24 flex-col items-center justify-center gap-2 text-xs text-slate-500">
                 <LoaderCircle
-                  size={25}
+                  size={22}
                   className="animate-spin text-[#087F8C]"
                 />
-
                 Loading eligible deliveries...
               </div>
             )}
 
-            {/* DELIVERY ERROR */}
-
             {!loadingDeliveries && deliveryError && (
-              <div className="space-y-3">
-                <Message tone="error">
-                  {deliveryError}
-                </Message>
+              <div className="space-y-2">
+                <Message tone="error">{deliveryError}</Message>
 
                 <button
                   type="button"
                   onClick={loadDeliveries}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#087F8C]"
+                  className="inline-flex min-h-9 items-center gap-2 text-xs font-semibold text-[#087F8C]"
                 >
-                  <RefreshCw size={15} />
+                  <RefreshCw size={14} />
                   Retry
                 </button>
               </div>
             )}
 
-            {/* NO DELIVERIES */}
-
             {!loadingDeliveries &&
               !deliveryError &&
               customerId &&
               deliveries.length === 0 && (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center">
                   <CalendarDays
-                    size={30}
+                    size={25}
                     className="mx-auto text-slate-400"
                   />
 
-                  <p className="mt-3 font-semibold text-slate-700">
+                  <p className="mt-2 text-xs font-semibold text-slate-700">
                     No eligible deliveries found
                   </p>
 
-                  <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+                  <p className="mx-auto mt-1 max-w-md text-[11px] leading-4 text-slate-500">
                     No unbilled delivery records are available for this
                     customer and billing period.
                   </p>
                 </div>
               )}
 
-            {/* DESKTOP DELIVERY TABLE */}
+            {/* DESKTOP TABLE */}
 
             {!loadingDeliveries &&
               !deliveryError &&
@@ -1333,26 +1311,11 @@ export default function CreateInvoicePage() {
                               className="size-4 accent-[#087F8C]"
                             />
                           </th>
-
-                          <th className="px-4 py-3">
-                            Delivery Date
-                          </th>
-
-                          <th className="px-4 py-3">
-                            Description
-                          </th>
-
-                          <th className="px-4 py-3 text-right">
-                            Jars
-                          </th>
-
-                          <th className="px-4 py-3 text-right">
-                            Rate
-                          </th>
-
-                          <th className="px-4 py-3 text-right">
-                            Amount
-                          </th>
+                          <th className="px-4 py-3">Delivery Date</th>
+                          <th className="px-4 py-3">Description</th>
+                          <th className="px-4 py-3 text-right">Jars</th>
+                          <th className="px-4 py-3 text-right">Rate</th>
+                          <th className="px-4 py-3 text-right">Amount</th>
                         </tr>
                       </thead>
 
@@ -1379,9 +1342,7 @@ export default function CreateInvoicePage() {
                                   type="checkbox"
                                   checked={checked}
                                   disabled={!id || saving}
-                                  onChange={() =>
-                                    toggleDelivery(delivery)
-                                  }
+                                  onChange={() => toggleDelivery(delivery)}
                                   aria-label={`Select delivery on ${getDeliveryDate(delivery)}`}
                                   className="size-4 accent-[#087F8C]"
                                 />
@@ -1415,7 +1376,7 @@ export default function CreateInvoicePage() {
 
                   {/* MOBILE DELIVERY CARDS */}
 
-                  <div className="space-y-2 md:hidden">
+                  <div className="space-y-1.5 grid grid-cols-2 mt-4 gap-2 md:hidden">
                     {deliveries.map((delivery) => {
                       const id = getDeliveryId(delivery);
 
@@ -1427,7 +1388,7 @@ export default function CreateInvoicePage() {
                       return (
                         <label
                           key={id}
-                          className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition ${
+                          className={`flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border p-2.5 transition ${
                             checked
                               ? "border-[#8BCDC1] bg-[#F0FAF8]"
                               : "border-slate-200 bg-white"
@@ -1438,28 +1399,23 @@ export default function CreateInvoicePage() {
                             checked={checked}
                             disabled={saving}
                             onChange={() => toggleDelivery(delivery)}
-                            className="mt-1 size-4 shrink-0 accent-[#087F8C]"
+                            className="size-4 shrink-0 accent-[#087F8C]"
                           />
 
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-start justify-between gap-2">
-                              <span className="text-sm font-semibold text-slate-800">
+                          <span className="min-w-0 flex-1 ">
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-slate-800">
                                 {formatDate(getDeliveryDate(delivery))}
                               </span>
 
-                              <span className="text-sm font-bold text-slate-900">
+                              <span className="shrink-0 text-xs font-bold tabular-nums text-slate-900">
                                 {currency(getDeliveryAmount(delivery))}
                               </span>
                             </span>
 
-                            <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                              <span>
-                                Jars: {getDeliveryQuantity(delivery)}
-                              </span>
-
-                              <span>
-                                Rate: {currency(getDeliveryRate(delivery))}
-                              </span>
+                            <span className="mt-1 flex flex-wrap gap-x-3 text-[10px] text-slate-500">
+                              <span>Jars: {getDeliveryQuantity(delivery)}</span>
+                              <span>Rate: {currency(getDeliveryRate(delivery))}</span>
                             </span>
                           </span>
                         </label>
@@ -1470,36 +1426,27 @@ export default function CreateInvoicePage() {
               )}
           </div>
 
-          {/* SELECTED DELIVERY TOTAL */}
+          {/* SELECTED TOTAL */}
 
           {selectedDeliveryIds.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 border-t border-[#D9EDE8] bg-[#F1FAF8] p-4 sm:grid-cols-3 sm:px-6">
+            <div className="grid grid-cols-3 gap-2 border-t border-[#D9EDE8] bg-[#F1FAF8] p-3">
               <div>
-                <p className="text-xs text-slate-500">
-                  Selected Records
-                </p>
-
-                <p className="mt-1 text-lg font-bold text-slate-900">
+                <p className="text-[10px] text-slate-500">Records</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
                   {selectedDeliveryIds.length}
                 </p>
               </div>
 
               <div>
-                <p className="text-xs text-slate-500">
-                  Total Jars
-                </p>
-
-                <p className="mt-1 text-lg font-bold text-slate-900">
+                <p className="text-[10px] text-slate-500">Total Jars</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">
                   {totalJars}
                 </p>
               </div>
 
-              <div className="col-span-2 border-t border-[#D9EDE8] pt-3 sm:col-span-1 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-                <p className="text-xs text-slate-500">
-                  Selected Delivery Amount
-                </p>
-
-                <p className="mt-1 text-xl font-extrabold text-[#087F68]">
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-500">Delivery Amount</p>
+                <p className="mt-1 truncate text-sm font-extrabold text-[#087F68]">
                   {currency(subtotal)}
                 </p>
               </div>
@@ -1507,101 +1454,59 @@ export default function CreateInvoicePage() {
           )}
         </section>
 
-        {/* =================================
+        {/* ======================================
             STEP 4 — ADDITIONAL CHARGES
-        ================================== */}
+        ====================================== */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <section className={sectionClass}>
           <StepHeading
             number="04"
             title="Additional Charges"
-            description="Add lost-jar charges using your saved rates, or enter another extra amount."
+            description="Manage lost jars, other charges and discount."
             icon={Wallet}
           />
 
-          <div className="mb-4 rounded-xl border border-[#D9EDE8] bg-[#F1FAF8] p-3.5 text-sm text-slate-600">
-            Lost-jar rates are loaded from Invoice Settings. You only need to enter the number of lost jars; the charge is calculated automatically.
+          <div className="mb-3 rounded-lg border border-[#D9EDE8] bg-[#F1FAF8] px-3 py-2 text-[10px] leading-4 text-slate-600 sm:text-xs sm:leading-5">
+            Lost-jar rates are loaded from Invoice Settings. Use + and −
+            to adjust quantities.
           </div>
 
-          {/* LOST JAR QUANTITIES */}
+          {/* LOST JAR CARDS */}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              {
-                label: "Thermal Jar",
-                value: thermalLostQty,
-                setter: setThermalLostQty,
-                rate: invoiceSettings.thermal_jar_charge,
-                field: "thermalLostQty",
-              },
-              {
-                label: "Capsule Jar",
-                value: capsuleLostQty,
-                setter: setCapsuleLostQty,
-                rate: invoiceSettings.capsule_jar_charge,
-                field: "capsuleLostQty",
-              },
-              {
-                label: "Dispenser Jar",
-                value: dispenserLostQty,
-                setter: setDispenserLostQty,
-                rate: invoiceSettings.dispenser_jar_charge,
-                field: "dispenserLostQty",
-              },
-            ].map((item) => (
-              <div
-                key={item.field}
-                className="rounded-xl border border-slate-200 p-4"
-              >
-                <label
-                  className="block text-sm font-semibold text-slate-800"
-                  htmlFor={item.field}
-                >
-                  {item.label} — Lost quantity
-                </label>
+          <div className="space-y-2 sm:grid sm:grid-cols-3 sm:gap-3 sm:space-y-0">
+            <LostJarCard
+              label="Thermal Jar"
+              field="thermalLostQty"
+              value={thermalLostQty}
+              setter={setThermalLostQty}
+              rate={invoiceSettings.thermal_jar_charge}
+              saving={saving}
+            />
 
-                <input
-                  id={item.field}
-                  type="number"
-                  min="0"
-                  step="1"
-                  inputMode="numeric"
-                  value={item.value}
-                  disabled={saving}
-                  onChange={(event) =>
-                    item.setter(event.target.value)
-                  }
-                  className="mt-2 min-h-11 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
-                />
+            <LostJarCard
+              label="Capsule Jar"
+              field="capsuleLostQty"
+              value={capsuleLostQty}
+              setter={setCapsuleLostQty}
+              rate={invoiceSettings.capsule_jar_charge}
+              saving={saving}
+            />
 
-                <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-500">
-                  <span>Saved rate</span>
-
-                  <strong className="text-slate-700">
-                    {currency(item.rate)} / jar
-                  </strong>
-                </div>
-
-                <div className="mt-1 flex items-center justify-between gap-2 text-sm">
-                  <span className="text-slate-500">
-                    Charge
-                  </span>
-
-                  <strong className="text-slate-900">
-                    {currency(
-                      (Number(item.value) || 0) * item.rate
-                    )}
-                  </strong>
-                </div>
-              </div>
-            ))}
+            <LostJarCard
+              label="Dispenser Jar"
+              field="dispenserLostQty"
+              value={dispenserLostQty}
+              setter={setDispenserLostQty}
+              rate={invoiceSettings.dispenser_jar_charge}
+              saving={saving}
+            />
           </div>
 
-          {/* OTHER ADDITIONAL AMOUNT */}
+          {/* OTHER CHARGES */}
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
-            <label className="block">
-              <span className="block text-sm font-semibold text-slate-700">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
+            <label className="block min-w-0">
+              <span className="block text-xs font-semibold text-slate-700 sm:text-sm">
                 Other Additional Amount (₹)
               </span>
 
@@ -1615,46 +1520,41 @@ export default function CreateInvoicePage() {
                   setAdditionalCharges(event.target.value)
                 }
                 placeholder="0.00"
-                className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                className={`${inputClass} mt-1.5`}
               />
 
-              <span className="mt-1.5 block text-xs text-slate-400">
-                Optional manual amount, such as delivery or service charges.
+              <span className="mt-1 block text-[10px] leading-4 text-slate-400 sm:text-xs">
+                Optional delivery or service charges.
               </span>
             </label>
 
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="flex justify-between gap-3 text-sm text-slate-600">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="flex justify-between gap-2 text-xs text-slate-600">
                 <span>Lost-jar charges</span>
-
                 <strong className="text-slate-800">
                   {currency(lostJarCharges)}
                 </strong>
               </div>
 
-              <div className="mt-2 flex justify-between gap-3 text-sm text-slate-600">
+              <div className="mt-2 flex justify-between gap-2 text-xs text-slate-600">
                 <span>Other amount</span>
-
                 <strong className="text-slate-800">
                   {currency(manualAdditionalCharges)}
                 </strong>
               </div>
 
-              <div className="mt-3 flex justify-between gap-3 border-t border-slate-200 pt-3 text-sm font-bold text-slate-900">
+              <div className="mt-2 flex justify-between gap-2 border-t border-slate-200 pt-2 text-xs font-bold text-slate-900">
                 <span>Additional total</span>
-
-                <span>
-                  {currency(additionalAmountTotal)}
-                </span>
+                <span>{currency(additionalAmountTotal)}</span>
               </div>
             </div>
           </div>
 
           {/* DISCOUNT */}
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
-            <label className="block">
-              <span className="block text-sm font-semibold text-slate-700">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)]">
+            <label className="block min-w-0">
+              <span className="block text-xs font-semibold text-slate-700 sm:text-sm">
                 Discount Amount (₹)
               </span>
 
@@ -1670,34 +1570,27 @@ export default function CreateInvoicePage() {
                   setDiscountAmountInput(event.target.value)
                 }
                 placeholder="0.00"
-                className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+                className={`${inputClass} mt-1.5`}
               />
 
-              <span className="mt-1.5 block text-xs text-slate-400">
-                Optional flat discount. It cannot exceed delivery and additional charges.
+              <span className="mt-1 block text-[10px] leading-4 text-slate-400 sm:text-xs">
+                Optional flat discount.
               </span>
             </label>
 
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
-              <div className="flex justify-between gap-3 text-sm text-slate-600">
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+              <div className="flex justify-between gap-2 text-xs text-slate-600">
                 <span>Current amount</span>
-
-                <strong>
-                  {currency(discountableSubtotal)}
-                </strong>
+                <strong>{currency(discountableSubtotal)}</strong>
               </div>
 
-              <div className="mt-2 flex justify-between gap-3 text-sm text-emerald-700">
+              <div className="mt-2 flex justify-between gap-2 text-xs text-emerald-700">
                 <span>Discount</span>
-
-                <strong>
-                  − {currency(discountAmount)}
-                </strong>
+                <strong>− {currency(discountAmount)}</strong>
               </div>
 
-              <div className="mt-3 flex justify-between gap-3 border-t border-emerald-200 pt-3 text-sm font-bold text-slate-900">
+              <div className="mt-2 flex justify-between gap-2 border-t border-emerald-200 pt-2 text-xs font-bold text-slate-900">
                 <span>After discount</span>
-
                 <span className="text-[#087F68]">
                   {currency(estimatedInvoiceTotal)}
                 </span>
@@ -1706,105 +1599,88 @@ export default function CreateInvoicePage() {
           </div>
         </section>
 
-        {/* =================================
-            STEP 5 — NOTES AND REVIEW
-        ================================== */}
+        {/* ======================================
+            STEP 5 — REVIEW
+        ====================================== */}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+        <section className={sectionClass}>
           <StepHeading
             number="05"
             title="Review Invoice"
-            description="Check the selected customer, billing amount and notes before creating the invoice."
+            description="Check the amount and add optional notes."
             icon={FileText}
           />
 
-          {/* SELECTED CUSTOMER */}
-
           {selectedCustomer && (
-            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <Users size={14} />
-                Bill To
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase text-slate-400">
+                  Bill To
+                </p>
+
+                <p className="mt-1 truncate text-xs font-bold text-slate-900 sm:text-sm">
+                  {selectedCustomer.name}
+                </p>
+
+                <p className="mt-0.5 text-[10px] text-slate-500">
+                  {selectedCustomer.phone || "No mobile number"}
+                </p>
               </div>
 
-              <p className="mt-2 font-bold text-slate-900">
-                {selectedCustomer.name}
-              </p>
-
-              <p className="mt-1 text-sm text-slate-500">
-                {selectedCustomer.phone || "No mobile number"}
-              </p>
+              <Users size={19} className="shrink-0 text-[#087F8C]" />
             </div>
           )}
 
-          {/* AMOUNT REVIEW */}
-
-          <div className="rounded-xl border border-slate-200 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
+          <div className="rounded-xl border border-slate-200 p-3">
+            <div className="flex items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-slate-800">
+                <p className="text-xs font-semibold text-slate-800">
                   Selected Deliveries
                 </p>
 
-                <p className="mt-1 text-xs text-slate-500">
-                  {selectedDeliveryIds.length} record(s) · {totalJars} jars
+                <p className="mt-1 text-[10px] text-slate-500">
+                  {selectedDeliveryIds.length} records · {totalJars} jars
                 </p>
               </div>
 
-              <p className="text-base font-bold text-slate-900">
+              <p className="text-xs font-bold text-slate-900">
                 {currency(subtotal)}
               </p>
             </div>
 
-            <div className="mt-4 border-t border-slate-100 pt-4">
-              <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-                <Info size={17} className="mt-0.5 shrink-0" />
-
-                <p className="leading-5">
-                  <strong>Previous Outstanding:</strong> Any earlier
-                  unpaid balance will be calculated during invoice
-                  generation and shown as a separate line. It is not
-                  included in the estimate below.
-                </p>
-              </div>
+            <div className="mt-3 rounded-lg bg-amber-50 p-2.5">
+              <p className="text-[10px] leading-4 text-amber-800 sm:text-xs sm:leading-5">
+                <strong>Previous Outstanding:</strong> Any earlier
+                unpaid balance will be calculated during invoice
+                generation and shown separately. It is not included
+                in the estimate below.
+              </p>
             </div>
 
-            <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
-              <div className="flex justify-between gap-3 text-slate-600">
+            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3 text-xs">
+              <div className="flex justify-between gap-2 text-slate-600">
                 <span>Delivery subtotal</span>
-
-                <strong className="text-slate-800">
-                  {currency(subtotal)}
-                </strong>
+                <strong>{currency(subtotal)}</strong>
               </div>
 
-              <div className="flex justify-between gap-3 text-slate-600">
+              <div className="flex justify-between gap-2 text-slate-600">
                 <span>Lost-jar charges</span>
-
-                <strong className="text-slate-800">
-                  {currency(lostJarCharges)}
-                </strong>
+                <strong>{currency(lostJarCharges)}</strong>
               </div>
 
-              <div className="flex justify-between gap-3 text-slate-600">
+              <div className="flex justify-between gap-2 text-slate-600">
                 <span>Other additional amount</span>
-
-                <strong className="text-slate-800">
-                  {currency(manualAdditionalCharges)}
-                </strong>
+                <strong>{currency(manualAdditionalCharges)}</strong>
               </div>
 
-              <div className="flex justify-between gap-3 text-emerald-700">
+              <div className="flex justify-between gap-2 text-emerald-700">
                 <span>Discount</span>
-
-                <strong>
-                  − {currency(discountAmount)}
-                </strong>
+                <strong>− {currency(discountAmount)}</strong>
               </div>
 
-              <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
-                <span className="font-bold text-slate-900">
-                  Estimated Total (before previous outstanding)
+              <div className="flex flex-col gap-1 border-t border-slate-200 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-[11px] font-bold text-slate-900">
+                  Estimated Total
                 </span>
 
                 <span className="text-xl font-extrabold text-[#087F68]">
@@ -1813,17 +1689,18 @@ export default function CreateInvoicePage() {
               </div>
             </div>
 
-            <p className="mt-2 text-xs leading-5 text-slate-400">
-              Previous outstanding, if any, is added separately by the database when the invoice is generated.
+            <p className="mt-2 text-[10px] leading-4 text-slate-400">
+              Previous outstanding, if any, is added separately by the
+              database when the invoice is generated.
             </p>
           </div>
 
           {/* NOTES */}
 
-          <div className="mt-5">
+          <div className="mt-3">
             <label
               htmlFor="invoiceNotes"
-              className="mb-2 block text-sm font-semibold text-slate-700"
+              className="mb-1.5 block text-xs font-semibold text-slate-700 sm:text-sm"
             >
               Invoice Notes{" "}
               <span className="font-normal text-slate-400">
@@ -1833,118 +1710,156 @@ export default function CreateInvoicePage() {
 
             <textarea
               id="invoiceNotes"
-              rows={3}
+              rows={2}
               maxLength={2000}
               value={notes}
               disabled={saving}
-              onChange={(event) =>
-                setNotes(event.target.value)
-              }
-              placeholder="Add payment instructions or additional information..."
-              className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Payment instructions or additional information..."
+              className="w-full min-w-0 resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#087F8C] focus:ring-4 focus:ring-[#087F8C]/10 disabled:bg-slate-50"
             />
 
-            <p className="mt-1 text-right text-xs text-slate-400">
+            <p className="mt-1 text-right text-[10px] text-slate-400">
               {notes.length}/2000
             </p>
           </div>
         </section>
 
-        {/* =================================
+        {/* ======================================
             LIVE INVOICE PREVIEW
-        ================================== */}
+        ====================================== */}
 
         {selectedCustomer && selectedDeliveryIds.length > 0 && (
-          <section className="space-y-3">
+          <section className="min-w-0 space-y-2 overflow-hidden">
             <div className="flex items-center gap-2 px-1">
-              <FileText size={18} className="text-[#087F8C]" />
+              <FileText size={17} className="text-[#087F8C]" />
 
-              <h2 className="font-bold text-slate-900">
+              <h2 className="text-sm font-bold text-slate-900">
                 Invoice Preview
               </h2>
             </div>
 
-            <InvoicePreview
-              invoice={{
-                invoiceDate,
-                periodStart,
-                periodEnd,
-                notes,
-                subtotal,
+            <div className="min-w-0 max-w-full overflow-x-auto rounded-xl">
+              <InvoicePreview
+                invoice={{
+                  invoiceDate,
+                  periodStart,
+                  periodEnd,
+                  notes,
+                  subtotal,
 
-                discountAmount,
-                discount_amount: discountAmount,
+                  discountAmount,
+                  discount_amount: discountAmount,
 
-                totalAmount: estimatedInvoiceTotal,
+                  totalAmount: estimatedInvoiceTotal,
 
-                additionalCharges: manualAdditionalCharges,
-                lostJarCharges,
+                  additionalCharges: manualAdditionalCharges,
+                  lostJarCharges,
 
-                paidAmount: 0,
-              }}
-              customer={selectedCustomer}
-              items={selectedDeliveries.map((delivery) => ({
-                id: getDeliveryId(delivery),
-                delivery_id: getDeliveryId(delivery),
-                description: "Water jar delivery",
-                deliveryDate: getDeliveryDate(delivery),
-                quantity: getDeliveryQuantity(delivery),
-                rate: getDeliveryRate(delivery),
-                amount: getDeliveryAmount(delivery),
-              }))}
-            />
+                  paidAmount: 0,
+                }}
+                customer={selectedCustomer}
+                items={selectedDeliveries.map((delivery) => ({
+                  id: getDeliveryId(delivery),
+                  delivery_id: getDeliveryId(delivery),
+                  description: "Water jar delivery",
+                  deliveryDate: getDeliveryDate(delivery),
+                  quantity: getDeliveryQuantity(delivery),
+                  rate: getDeliveryRate(delivery),
+                  amount: getDeliveryAmount(delivery),
+                }))}
+              />
+            </div>
           </section>
         )}
 
-        {/* =================================
-            FINAL ACTIONS
-        ================================== */}
+        {/* DESKTOP ACTIONS */}
 
-        <div className="sticky bottom-0 z-20 -mx-3 border-t border-slate-200 bg-white/95 px-3 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-          <div className="flex flex-col gap-3 rounded-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="hidden items-center justify-between gap-4 sm:flex">
+          <div>
+            <p className="text-xs text-slate-500">
+              Estimated total after discount
+            </p>
 
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">
-                Estimated total after discount
-              </p>
+            <p className="text-2xl font-extrabold text-slate-900">
+              {currency(estimatedInvoiceTotal)}
+            </p>
+          </div>
 
-              <p className="text-xl font-extrabold text-slate-900">
-                {currency(estimatedInvoiceTotal)}
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/invoices"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </Link>
 
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Link
-                to="/invoices"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </Link>
-
-              <button
-                type="submit"
-                disabled={!canCreateInvoice}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#087F8C] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#066B76] focus:outline-none focus:ring-4 focus:ring-[#087F8C]/15 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {saving ? (
-                  <>
-                    <LoaderCircle
-                      size={18}
-                      className="animate-spin"
-                    />
-                    Creating Invoice...
-                  </>
-                ) : (
-                  <>
-                    <Save size={18} />
-                    Create Invoice
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={!canCreateInvoice}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#087F8C] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#066B76] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? (
+                <>
+                  <LoaderCircle size={18} className="animate-spin" />
+                  Creating Invoice...
+                </>
+              ) : (
+                <>
+                  <Save size={18} />
+                  Create Invoice
+                </>
+              )}
+            </button>
           </div>
         </div>
       </form>
+
+      {/* MOBILE STICKY ACTION BAR */}
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 p-4 pt-2.5 shadow-[0_-6px_20px_rgba(15,23,42,0.07)] backdrop-blur-md sm:hidden">
+        <div className="mx-auto flex max-w-[1350px] items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-slate-500">
+              Estimated Total
+            </p>
+
+            <p className="truncate text-base font-extrabold tabular-nums text-slate-900">
+              {currency(estimatedInvoiceTotal)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/invoices")}
+            disabled={saving}
+            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            form="create-invoice-form"
+            disabled={!canCreateInvoice}
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#087F8C] px-3.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#066B76] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <LoaderCircle size={15} className="animate-spin" />
+                Saving
+              </>
+            ) : (
+              <>
+                <Save size={15} />
+                Create
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="h-[env(safe-area-inset-bottom)]" />
+      </div>
     </main>
   );
 }

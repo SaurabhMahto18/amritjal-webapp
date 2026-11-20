@@ -109,6 +109,7 @@ import ProductDetailPage from "../features/products/pages/ProductDetailPage";
 import InvoicesPage from "../features/invoices/pages/InvoicesPage";
 import CreateInvoicePage from "../features/invoices/pages/CreateInvoicePage";
 import InvoiceDetailPage from "../features/invoices/pages/InvoiceDetailPage";
+import EditInvoicePage from "../features/invoices/pages/EditInvoicePage";
 import ReportStyleInvoicePrint from "../features/invoices/print/ReportStyleInvoicePrint";
 import SummaryInvoicePrint from "../features/invoices/print/SummaryInvoicePrint";
 import StandardInvoicePrint from "../features/invoices/print/StandardInvoicePrint";
@@ -616,6 +617,11 @@ export default function AppRouter() {
             <Route
               path="/invoices/new"
               element={<CreateInvoicePage />}
+            />
+
+            <Route
+              path="/invoices/:invoiceId/edit"
+              element={<EditInvoicePage />}
             />
 
             <Route
