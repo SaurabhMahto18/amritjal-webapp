@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
 import {
   Droplets,
   Mail,
@@ -16,6 +17,8 @@ import {
   EyeOff,
   ArrowLeft,
   Check,
+  Clock3,
+  AlertCircle,
 } from "lucide-react";
 
 import { useAuthContext } from "../providers/AuthProvider";
@@ -38,6 +41,8 @@ function updateMeta(name, content, attribute = "name") {
   }
 
   element.setAttribute("content", content);
+
+  return element;
 }
 
 export default function SignupPage() {
@@ -55,7 +60,8 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
 
   const [emailSent, setEmailSent] = useState(false);
   const [googleSignupComplete, setGoogleSignupComplete] =
@@ -68,9 +74,24 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  // SEO metadata
+  // ======================================
+  // SEO METADATA
+  // ======================================
+
   useEffect(() => {
     const previousTitle = document.title;
+
+    const previousDescription = document.head.querySelector(
+      'meta[name="description"]'
+    )?.getAttribute("content");
+
+    const previousRobots = document.head.querySelector(
+      'meta[name="robots"]'
+    )?.getAttribute("content");
+
+    const previousThemeColor = document.head.querySelector(
+      'meta[name="theme-color"]'
+    )?.getAttribute("content");
 
     document.title = SEO_TITLE;
 
@@ -80,10 +101,31 @@ export default function SignupPage() {
 
     return () => {
       document.title = previousTitle;
+
+      const restoreMeta = (name, previousValue) => {
+        const element = document.head.querySelector(
+          `meta[name="${name}"]`
+        );
+
+        if (!element) return;
+
+        if (previousValue === null || previousValue === undefined) {
+          element.remove();
+        } else {
+          element.setAttribute("content", previousValue);
+        }
+      };
+
+      restoreMeta("description", previousDescription);
+      restoreMeta("robots", previousRobots);
+      restoreMeta("theme-color", previousThemeColor);
     };
   }, []);
 
-  // Handle Google OAuth return
+  // ======================================
+  // GOOGLE OAUTH CALLBACK
+  // ======================================
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -91,7 +133,7 @@ export default function SignupPage() {
       params.get("google_signup") === "1";
 
     const returnedBusinessName =
-      params.get("business_name") || "";
+      params.get("business_name")?.trim() || "";
 
     if (!isGoogleSignup || googleCallbackHandled.current) {
       return;
@@ -102,6 +144,7 @@ export default function SignupPage() {
     async function completeGoogleSignup() {
       setGoogleLoading(true);
       setError("");
+      setMessage("");
 
       try {
         const {
@@ -117,34 +160,90 @@ export default function SignupPage() {
           );
         }
 
-        // Save business name in Supabase user metadata.
-        if (returnedBusinessName.trim()) {
-          const { error: updateError } =
-            await supabase.auth.updateUser({
-              data: {
-                business_name: returnedBusinessName.trim(),
-              },
-            });
-
-          if (updateError) throw updateError;
+        if (!session.user.email) {
+          throw new Error(
+            "Google account email could not be verified."
+          );
         }
 
-        setGoogleSignupComplete(true);
-        setEmail(session.user.email || "");
-        setBusinessName(returnedBusinessName);
+        if (!session.user.email_confirmed_at) {
+          throw new Error(
+            "Your Google email could not be confirmed. Please try again."
+          );
+        }
 
-        // Remove OAuth query parameters from the URL.
+        if (
+          !returnedBusinessName ||
+          returnedBusinessName.length > 120
+        ) {
+          throw new Error(
+            "A valid business name is required."
+          );
+        }
+
+        // Save business name in authenticated user's metadata.
+        const { error: updateError } =
+          await supabase.auth.updateUser({
+            data: {
+              business_name: returnedBusinessName,
+            },
+          });
+
+        if (updateError) throw updateError;
+
+        // Check whether this user already has business access.
+        const {
+          data: accessData,
+          error: accessError,
+        } = await supabase.rpc("get_my_business_access");
+
+        if (accessError) throw accessError;
+
+        const existingBusiness = Array.isArray(accessData)
+          ? accessData[0]
+          : accessData;
+
+        // Preserve existing active owner/member accounts.
+        if (existingBusiness?.business_id) {
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+
+        // New Google user: submit business registration.
+        const { error: requestError } = await supabase.rpc(
+          "submit_business_registration",
+          {
+            p_business_name: returnedBusinessName,
+          }
+        );
+
+        if (requestError) throw requestError;
+
+        setEmail(session.user.email);
+        setBusinessName(returnedBusinessName);
+        setGoogleSignupComplete(true);
+
+        // Remove OAuth callback parameters.
         window.history.replaceState(
           {},
           document.title,
           window.location.pathname
         );
       } catch (err) {
-        console.error("Google signup callback error:", err);
+        console.error(
+          "Google registration failed:",
+          err
+        );
 
         setError(
-          err.message ||
-            "Google signup could not be completed. Please try again."
+          err?.message ||
+            "Google registration could not be completed."
         );
       } finally {
         setGoogleLoading(false);
@@ -152,9 +251,12 @@ export default function SignupPage() {
     }
 
     completeGoogleSignup();
-  }, []);
+  }, [navigate]);
 
-  // Email/password signup
+  // ======================================
+  // EMAIL / PASSWORD SIGNUP
+  // ======================================
+
   async function handleSignup(event) {
     event.preventDefault();
 
@@ -170,7 +272,9 @@ export default function SignupPage() {
     }
 
     if (normalizedBusinessName.length > 120) {
-      setError("Business name cannot exceed 120 characters.");
+      setError(
+        "Business name cannot exceed 120 characters."
+      );
       return;
     }
 
@@ -180,7 +284,9 @@ export default function SignupPage() {
     }
 
     if (password.length < 8) {
-      setError("Password must contain at least 8 characters.");
+      setError(
+        "Password must contain at least 8 characters."
+      );
       return;
     }
 
@@ -188,6 +294,8 @@ export default function SignupPage() {
       setError("Passwords do not match.");
       return;
     }
+
+    if (loading || googleLoading) return;
 
     setLoading(true);
 
@@ -200,6 +308,7 @@ export default function SignupPage() {
 
       setEmail(normalizedEmail);
       setEmailSent(true);
+
       setPassword("");
       setConfirmPassword("");
 
@@ -207,15 +316,21 @@ export default function SignupPage() {
         "Your confirmation email has been sent successfully."
       );
     } catch (err) {
+      console.error("Email signup failed:", err);
+
       setError(
-        err.message || "Registration could not be completed."
+        err?.message ||
+          "Registration could not be completed."
       );
     } finally {
       setLoading(false);
     }
   }
 
-  // Google signup
+  // ======================================
+  // GOOGLE SIGNUP
+  // ======================================
+
   async function handleGoogleSignup() {
     setError("");
     setMessage("");
@@ -228,7 +343,9 @@ export default function SignupPage() {
     }
 
     if (normalizedBusinessName.length > 120) {
-      setError("Business name cannot exceed 120 characters.");
+      setError(
+        "Business name cannot exceed 120 characters."
+      );
       return;
     }
 
@@ -242,7 +359,11 @@ export default function SignupPage() {
         window.location.origin
       );
 
-      redirectUrl.searchParams.set("google_signup", "1");
+      redirectUrl.searchParams.set(
+        "google_signup",
+        "1"
+      );
+
       redirectUrl.searchParams.set(
         "business_name",
         normalizedBusinessName
@@ -263,7 +384,7 @@ export default function SignupPage() {
       console.error("Google signup error:", err);
 
       setError(
-        err.message ||
+        err?.message ||
           "Google signup could not be started. Please try again."
       );
 
@@ -271,7 +392,10 @@ export default function SignupPage() {
     }
   }
 
-  // Resend email confirmation
+  // ======================================
+  // RESEND CONFIRMATION EMAIL
+  // ======================================
+
   async function handleResendEmail() {
     if (!email || resending) return;
 
@@ -287,7 +411,7 @@ export default function SignupPage() {
       );
     } catch (err) {
       setError(
-        err.message ||
+        err?.message ||
           "Could not resend the confirmation email."
       );
     } finally {
@@ -295,16 +419,27 @@ export default function SignupPage() {
     }
   }
 
+  // ======================================
+  // INPUT STYLES
+  // ======================================
+
   const inputClass =
     "w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:ring-4 focus:ring-cyan-50";
 
   const isSubmitting = loading || googleLoading;
 
+  // ======================================
+  // RENDER
+  // ======================================
+
   return (
     <main className="min-h-screen bg-[#F3FBFF] text-slate-800">
-      {/* Header */}
+
+      {/* HEADER */}
+
       <header className="border-b border-slate-200/70 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+
           <Link
             to="/login"
             aria-label="Amrit Jal home"
@@ -337,13 +472,19 @@ export default function SignupPage() {
               Sign in
             </Link>
           </div>
+
         </div>
       </header>
 
+      {/* MAIN CONTENT */}
+
       <div className="mx-auto grid min-h-[calc(100vh-77px)] max-w-7xl items-center gap-10 px-4 py-7 sm:px-6 sm:py-12 lg:grid-cols-[1fr_0.9fr] lg:gap-16 lg:px-8">
-        {/* Brand section */}
+
+        {/* BRAND SECTION */}
+
         <section className="hidden lg:block">
           <div className="max-w-xl">
+
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-white px-4 py-2 text-sm font-semibold text-cyan-800 shadow-sm">
               <Droplets size={17} />
               Smarter water business management
@@ -404,11 +545,14 @@ export default function SignupPage() {
                 );
               })}
             </div>
+
           </div>
         </section>
 
-        {/* Signup card */}
+        {/* SIGNUP CARD */}
+
         <section className="mx-auto w-full max-w-lg">
+
           <div className="mb-6 lg:hidden">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800">
               <Droplets size={15} />
@@ -425,16 +569,22 @@ export default function SignupPage() {
               {emailSent
                 ? "One final step to activate your account."
                 : googleSignupComplete
-                  ? "Your Google account has been connected."
+                  ? "Your registration is submitted for review."
                   : "Everything your water business needs, in one place."}
             </p>
           </div>
 
           <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-900/5">
+
             <div className="h-1.5 bg-cyan-700" />
 
             <div className="p-5 sm:p-8">
-              {!emailSent && !googleSignupComplete ? (
+
+              {/* ==================================
+                  REGISTRATION FORM
+              ================================== */}
+
+              {!emailSent && !googleSignupComplete && (
                 <>
                   <div className="mb-7">
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
@@ -454,7 +604,8 @@ export default function SignupPage() {
                     </p>
                   </div>
 
-                  {/* Business name is required for both signup methods */}
+                  {/* BUSINESS NAME */}
+
                   <div className="mb-5">
                     <label
                       htmlFor="business-name"
@@ -488,7 +639,8 @@ export default function SignupPage() {
                     </div>
                   </div>
 
-                  {/* Google Signup */}
+                  {/* GOOGLE SIGNUP */}
+
                   <button
                     type="button"
                     onClick={handleGoogleSignup}
@@ -541,7 +693,8 @@ export default function SignupPage() {
                     <div className="h-px flex-1 bg-slate-200" />
                   </div>
 
-                  {/* Email signup */}
+                  {/* EMAIL SIGNUP */}
+
                   <form
                     onSubmit={handleSignup}
                     className="space-y-4"
@@ -714,63 +867,89 @@ export default function SignupPage() {
                     </button>
                   </form>
                 </>
-              ) : googleSignupComplete ? (
-                /* Google signup success */
+              )}
+
+              {/* ==================================
+                  GOOGLE REGISTRATION SUCCESS
+              ================================== */}
+
+              {googleSignupComplete && (
                 <div className="py-3 text-center">
+
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                    <CheckCircle2 size={32} />
+                    <Clock3 size={32} />
                   </div>
 
                   <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-                    Google account connected
+                    Registration submitted
                   </p>
 
                   <h2 className="mt-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">
-                    Welcome to Amrit Jal
+                    Application under review
                   </h2>
 
                   <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                    Your Google account has been authenticated and
-                    your business name has been saved to your user
-                    profile.
+                    Your Google account has been authenticated
+                    and your business registration has been
+                    submitted successfully.
                   </p>
 
                   <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
+
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Business name
                     </p>
 
-                    <p className="mt-1 font-bold text-slate-900">
+                    <p className="mt-1 break-words font-bold text-slate-900">
                       {businessName}
                     </p>
 
-                    <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Google account
                     </p>
 
                     <p className="mt-1 break-all text-sm font-medium text-slate-800">
                       {email}
                     </p>
+
                   </div>
 
-                  <p className="mt-4 text-xs leading-5 text-amber-700">
-                    If your business workspace has not been created
-                    automatically, complete the business setup before
-                    using the dashboard.
-                  </p>
+                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left">
+                    <div className="flex items-center gap-2 font-bold text-amber-900">
+                      <ShieldCheck size={18} />
+                      Awaiting admin approval
+                    </div>
+
+                    <p className="mt-2 text-sm leading-6 text-amber-800">
+                      Your business dashboard will become
+                      available after an administrator approves
+                      your registration.
+                    </p>
+                  </div>
 
                   <button
                     type="button"
-                    onClick={() => navigate("/dashboard", { replace: true })}
+                    onClick={() =>
+                      navigate("/registration-pending", {
+                        replace: true,
+                      })
+                    }
                     className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-5 py-3 font-bold text-white transition hover:bg-cyan-800"
                   >
-                    Continue to dashboard
+                    View registration status
                     <ArrowRight size={18} />
                   </button>
+
                 </div>
-              ) : (
-                /* Email confirmation success */
+              )}
+
+              {/* ==================================
+                  EMAIL CONFIRMATION SCREEN
+              ================================== */}
+
+              {emailSent && (
                 <div className="py-3 text-center">
+
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                     <Mail size={30} />
                   </div>
@@ -784,9 +963,9 @@ export default function SignupPage() {
                   </h2>
 
                   <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                    We sent a confirmation link to the email address
-                    below. Open that email and click the confirmation
-                    link to verify your account.
+                    We sent a confirmation link to the email
+                    address below. Open that email and click
+                    the confirmation link to verify your account.
                   </p>
 
                   <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
@@ -801,6 +980,7 @@ export default function SignupPage() {
                   </div>
 
                   <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-left">
+
                     <div className="flex items-center gap-2 font-bold text-emerald-800">
                       <CheckCircle2 size={19} />
                       What happens next?
@@ -819,9 +999,15 @@ export default function SignupPage() {
 
                       <li className="flex gap-2">
                         <Check size={16} className="mt-0.5 shrink-0" />
-                        Return to Amrit Jal and sign in.
+                        Your business registration will be submitted for review.
+                      </li>
+
+                      <li className="flex gap-2">
+                        <Check size={16} className="mt-0.5 shrink-0" />
+                        Wait for admin approval.
                       </li>
                     </ul>
+
                   </div>
 
                   {message && (
@@ -880,21 +1066,34 @@ export default function SignupPage() {
                     <ArrowLeft size={16} />
                     Back to registration
                   </button>
+
                 </div>
               )}
 
-              {error && !emailSent && !googleSignupComplete && (
-                <p
-                  role="alert"
-                  className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700"
-                >
-                  {error}
-                </p>
-              )}
+              {/* GOOGLE CALLBACK ERROR */}
+
+              {error && googleLoading === false &&
+                !emailSent &&
+                !googleSignupComplete &&
+                new URLSearchParams(window.location.search).get(
+                  "google_signup"
+                ) === "1" && (
+                  <div
+                    role="alert"
+                    className="mt-4 flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700"
+                  >
+                    <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
             </div>
           </div>
 
+          {/* SECURITY FOOTER */}
+
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
+
             <span className="flex items-center gap-1.5">
               <ShieldCheck
                 size={15}
@@ -910,11 +1109,13 @@ export default function SignupPage() {
               />
               Email verification
             </span>
+
           </div>
 
           <p className="mt-5 text-center text-xs leading-5 text-slate-400">
             By creating an account, you agree to use Amrit Jal responsibly.
           </p>
+
         </section>
       </div>
     </main>

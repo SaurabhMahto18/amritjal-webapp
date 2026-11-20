@@ -9,6 +9,7 @@ import {
 
 import { authService } from "../services/authService";
 import { businessAccessService } from "../services/businessAccessService";
+import { supabase } from "../../../lib/supabase/client";
 
 const AuthContext = createContext(null);
 
@@ -23,6 +24,11 @@ export function AuthProvider({ children }) {
 
   const [businessAccess, setBusinessAccess] = useState(null);
   const [accessError, setAccessError] = useState("");
+
+  // Registration approval state
+  const [registrationRequest, setRegistrationRequest] = useState(null);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
 
   // ========================================
   // INITIAL SESSION + AUTH LISTENER
@@ -42,9 +48,7 @@ export function AuthProvider({ children }) {
       } catch (error) {
         console.error("Session load failed:", error.message);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     }
 
@@ -59,6 +63,10 @@ export function AuthProvider({ children }) {
           setBusinessAccess(null);
           setAccessError("");
           setAccessLoading(false);
+
+          setRegistrationRequest(null);
+          setRegistrationError("");
+          setRegistrationLoading(false);
         }
 
         setLoading(false);
@@ -95,8 +103,6 @@ export function AuthProvider({ children }) {
 
       return result;
     } catch (error) {
-      console.error("Business access check failed:", error);
-
       setBusinessAccess(null);
 
       setAccessError(
@@ -107,6 +113,50 @@ export function AuthProvider({ children }) {
       return null;
     } finally {
       setAccessLoading(false);
+    }
+  }, [user]);
+
+  // ========================================
+  // REFRESH REGISTRATION REQUEST
+  // ========================================
+
+  const refreshRegistrationRequest = useCallback(async () => {
+    if (!user) {
+      setRegistrationRequest(null);
+      setRegistrationError("");
+      return null;
+    }
+
+    setRegistrationLoading(true);
+    setRegistrationError("");
+
+    try {
+      const { data, error } = await supabase.rpc(
+        "get_my_registration_request"
+      );
+
+      if (error) throw error;
+
+      const request = Array.isArray(data)
+        ? data[0] || null
+        : data;
+
+      setRegistrationRequest(request);
+
+      return request;
+    } catch (error) {
+      console.error("Registration status check failed:", error);
+
+      setRegistrationRequest(null);
+
+      setRegistrationError(
+        error?.message ||
+          "Registration status could not be verified."
+      );
+
+      return null;
+    } finally {
+      setRegistrationLoading(false);
     }
   }, [user]);
 
@@ -125,7 +175,6 @@ export function AuthProvider({ children }) {
 
     const checkAccess = async () => {
       if (!mounted) return;
-
       await refreshBusinessAccess();
     };
 
@@ -143,6 +192,20 @@ export function AuthProvider({ children }) {
   }, [user, refreshBusinessAccess]);
 
   // ========================================
+  // AUTOMATIC REGISTRATION STATUS REFRESH
+  // ========================================
+
+  useEffect(() => {
+    if (!user) {
+      setRegistrationRequest(null);
+      setRegistrationError("");
+      return;
+    }
+
+    refreshRegistrationRequest();
+  }, [user, refreshRegistrationRequest]);
+
+  // ========================================
   // LOGIN
   // ========================================
 
@@ -151,7 +214,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ========================================
-  // SIGNUP WITH EMAIL CONFIRMATION
+  // SIGNUP
   // ========================================
 
   const signUp = useCallback(
@@ -174,27 +237,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ========================================
-  // CREATE BUSINESS
+  // LEGACY BUSINESS CREATION
   // ========================================
 
-  const createBusinessForCurrentUser = useCallback(
-    async (businessName) => {
-      const result =
-        await authService.createBusinessForCurrentUser(
-          businessName
-        );
+  // New registrations must be approved by an admin.
+  // Do not call create_business_for_current_user from signup.
 
-      // Immediately refresh business access.
-      const access =
-        await businessAccessService.getCurrentBusinessAccess();
-
-      setBusinessAccess(access);
-      setAccessError("");
-
-      return result;
-    },
-    []
-  );
+  const createBusinessForCurrentUser = useCallback(async () => {
+    throw new Error(
+      "Business creation is available only after admin approval."
+    );
+  }, []);
 
   // ========================================
   // LOGOUT
@@ -205,10 +258,30 @@ export function AuthProvider({ children }) {
 
     setSession(null);
     setUser(null);
+
     setBusinessAccess(null);
     setAccessError("");
     setAccessLoading(false);
+
+    setRegistrationRequest(null);
+    setRegistrationError("");
+    setRegistrationLoading(false);
   }, []);
+
+  // ========================================
+  // DERIVED REGISTRATION STATES
+  // ========================================
+
+  const registrationStatus = registrationRequest?.request_status;
+
+  const isRegistrationPending =
+    registrationStatus === "pending";
+
+  const isRegistrationRejected =
+    registrationStatus === "rejected";
+
+  const isRegistrationApproved =
+    registrationStatus === "approved";
 
   // ========================================
   // CONTEXT VALUE
@@ -231,10 +304,21 @@ export function AuthProvider({ children }) {
 
     hasBusinessAccess: Boolean(
       businessAccess &&
-        !businessAccess.isSuspended
+      !businessAccess.isSuspended
     ),
 
     refreshBusinessAccess,
+
+    registrationRequest,
+    registrationLoading,
+    registrationError,
+    registrationStatus,
+
+    isRegistrationPending,
+    isRegistrationRejected,
+    isRegistrationApproved,
+
+    refreshRegistrationRequest,
 
     signIn,
     signUp,

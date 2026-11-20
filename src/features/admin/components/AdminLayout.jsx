@@ -20,6 +20,7 @@ import {
   Users,
   SlidersHorizontal,
   Megaphone,
+  ClipboardCheck,
 } from "lucide-react";
 
 // ======================================
@@ -31,6 +32,11 @@ const navigation = [
     label: "Overview",
     path: "/admin/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Registration Requests",
+    path: "/admin/registration-requests",
+    icon: ClipboardCheck,
   },
   {
     label: "Businesses",
@@ -79,10 +85,10 @@ const navigation = [
     icon: SlidersHorizontal,
   },
   {
-  label: "Announcement Centre",
-  path: "/admin/announcements",
-  icon: Megaphone,
-},
+    label: "Announcement Centre",
+    path: "/admin/announcements",
+    icon: Megaphone,
+  },
   {
     label: "Settings",
     path: "/admin/settings",

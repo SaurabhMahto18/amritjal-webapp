@@ -28,6 +28,7 @@ import AdminActivityLogs from "../features/admin/pages/AdminActivityLogs";
 import AdminUsers from "../features/admin/pages/AdminUsers";
 import AdminConfiguration from "../features/admin/pages/AdminConfiguration";
 import AdminAnnouncements from "../features/admin/pages/AdminAnnouncements";
+import RegistrationRequestsPage from "../features/admin/pages/RegistrationRequestsPage";
 
 // ========================================
 // AUTHENTICATION
@@ -311,6 +312,11 @@ export default function AppRouter() {
             <Route
               path="announcements"
               element={<AdminAnnouncements />}
+            />
+
+            <Route
+              path="registration-requests"
+              element={<RegistrationRequestsPage />}
             />
 
           </Route>
