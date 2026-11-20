@@ -6,6 +6,10 @@ const CUSTOMERS_TABLE = "customers";
 const EMPLOYEES_TABLE = "staff_employees";
 const EVENTS_TABLE = "events";
 
+// ==========================================
+// GET CURRENT BUSINESS ID
+// ==========================================
+
 async function getBusinessId() {
   const {
     data: { user },
@@ -33,6 +37,10 @@ async function getBusinessId() {
   return data.id;
 }
 
+// ==========================================
+// HELPERS
+// ==========================================
+
 const toNumber = (value) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -58,6 +66,10 @@ const normalizePayment = (row) => ({
   referenceNo: row.reference_no || "",
   createdAt: row.created_at,
 });
+
+// ==========================================
+// VALIDATE PAYMENT
+// ==========================================
 
 function validatePayment(input) {
   if (!input || typeof input !== "object") {
@@ -138,6 +150,10 @@ function validatePayment(input) {
   };
 }
 
+// ==========================================
+// PAYMENT SELECT
+// ==========================================
+
 const PAYMENT_SELECT = `
   id,
   business_id,
@@ -154,9 +170,62 @@ const PAYMENT_SELECT = `
   customers(name, phone)
 `;
 
-// ------------------------------------------
+// ==========================================
+// PAYMENT UPDATE EVENT
+// ==========================================
+
+function notifyPaymentsUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new Event("amrit-jal-payments-updated")
+    );
+  }
+}
+
+// ==========================================
+// VERIFY CUSTOMER
+// ==========================================
+
+async function verifyCustomer(customerId, businessId) {
+  const { data: customer, error } = await supabase
+    .from(CUSTOMERS_TABLE)
+    .select("id")
+    .eq("id", customerId)
+    .eq("business_id", businessId)
+    .eq("archived", false)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!customer) {
+    throw new Error("Selected customer is unavailable.");
+  }
+}
+
+// ==========================================
+// VERIFY EVENT
+// ==========================================
+
+async function verifyEvent(eventId, businessId) {
+  if (!eventId) return;
+
+  const { data: event, error } = await supabase
+    .from(EVENTS_TABLE)
+    .select("id, business_id")
+    .eq("id", eventId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!event) {
+    throw new Error("Selected event is unavailable.");
+  }
+}
+
+// ==========================================
 // GET CUSTOMERS
-// ------------------------------------------
+// ==========================================
 
 export async function getCustomers() {
   const businessId = await getBusinessId();
@@ -187,10 +256,9 @@ export async function getCustomers() {
     }));
 }
 
-// ------------------------------------------
+// ==========================================
 // GET EMPLOYEES
-// Uses public.staff_employees
-// ------------------------------------------
+// ==========================================
 
 export async function getEmployees() {
   const businessId = await getBusinessId();
@@ -218,9 +286,9 @@ export async function getEmployees() {
   }));
 }
 
-// ------------------------------------------
+// ==========================================
 // GET PAYMENTS
-// ------------------------------------------
+// ==========================================
 
 export async function getPayments({
   date = "",
@@ -255,54 +323,24 @@ export async function getPayments({
   return (data || []).map(normalizePayment);
 }
 
-// ------------------------------------------
-// CREATE CUSTOMER PAYMENT
-// ------------------------------------------
+// ==========================================
+// CREATE PAYMENT
+// ==========================================
 
 export async function createPayment(input) {
   const businessId = await getBusinessId();
   const payment = validatePayment(input);
 
-  // Verify customer belongs to current business.
-  const { data: customer, error: customerError } = await supabase
-    .from(CUSTOMERS_TABLE)
-    .select("id, name, phone")
-    .eq("id", payment.customerId)
-    .eq("business_id", businessId)
-    .eq("archived", false)
-    .maybeSingle();
-
-  if (customerError) throw customerError;
-
-  if (!customer) {
-    throw new Error("Selected customer is unavailable.");
-  }
-
-  // Verify event belongs to current business.
-  if (payment.eventId) {
-    const { data: event, error: eventError } = await supabase
-      .from(EVENTS_TABLE)
-      .select("id, business_id")
-      .eq("id", payment.eventId)
-      .eq("business_id", businessId)
-      .maybeSingle();
-
-    if (eventError) throw eventError;
-
-    if (!event) {
-      throw new Error("Selected event is unavailable.");
-    }
-  }
+  await verifyCustomer(payment.customerId, businessId);
+  await verifyEvent(payment.eventId, businessId);
 
   /*
    * IMPORTANT:
-   *
-   * staff_employees is the application's employee table.
-   * However, payments.employee_id currently references
+   * payments.employee_id currently references
    * employees(id, business_id), NOT staff_employees.
    *
-   * Therefore employee_id must remain NULL for customer
-   * payments until the database FK is migrated.
+   * Therefore employee_id remains NULL until
+   * the database FK is migrated.
    */
 
   const payload = {
@@ -328,24 +366,118 @@ export async function createPayment(input) {
 
   if (error) throw error;
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new Event("amrit-jal-payments-updated")
-    );
-  }
+  notifyPaymentsUpdated();
 
   return normalizePayment(data);
 }
 
-// ------------------------------------------
+// ==========================================
+// UPDATE PAYMENT
+// ==========================================
+
+export async function updatePayment(paymentId, input) {
+  if (!paymentId) {
+    throw new Error("Payment ID is required.");
+  }
+
+  const businessId = await getBusinessId();
+  const payment = validatePayment(input);
+
+  // Verify payment belongs to current business.
+  const { data: existing, error: existingError } =
+    await supabase
+      .from(PAYMENTS_TABLE)
+      .select("id, business_id")
+      .eq("id", paymentId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  if (!existing) {
+    throw new Error("Payment not found or access denied.");
+  }
+
+  // Verify customer and event ownership.
+  await verifyCustomer(payment.customerId, businessId);
+  await verifyEvent(payment.eventId, businessId);
+
+  const payload = {
+    customer_id: payment.customerId,
+    event_id: payment.eventId,
+    payment_date: payment.date,
+    amount: payment.amount,
+    method: payment.method,
+    purpose: payment.purpose,
+    reference_no: payment.referenceNo || null,
+    notes: payment.notes || null,
+  };
+
+  const { data, error } = await supabase
+    .from(PAYMENTS_TABLE)
+    .update(payload)
+    .eq("id", paymentId)
+    .eq("business_id", businessId)
+    .select(PAYMENT_SELECT)
+    .single();
+
+  if (error) throw error;
+
+  notifyPaymentsUpdated();
+
+  return normalizePayment(data);
+}
+
+// ==========================================
+// DELETE PAYMENT
+// ==========================================
+
+export async function deletePayment(paymentId) {
+  if (!paymentId) {
+    throw new Error("Payment ID is required.");
+  }
+
+  const businessId = await getBusinessId();
+
+  // Verify payment belongs to current business.
+  const { data: existing, error: existingError } =
+    await supabase
+      .from(PAYMENTS_TABLE)
+      .select("id")
+      .eq("id", paymentId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  if (!existing) {
+    throw new Error("Payment not found or access denied.");
+  }
+
+  const { error } = await supabase
+    .from(PAYMENTS_TABLE)
+    .delete()
+    .eq("id", paymentId)
+    .eq("business_id", businessId);
+
+  if (error) throw error;
+
+  notifyPaymentsUpdated();
+
+  return true;
+}
+
+// ==========================================
 // PAYMENT SERVICE
-// ------------------------------------------
+// ==========================================
 
 const paymentService = {
   getCustomers,
   getEmployees,
   getPayments,
   createPayment,
+  updatePayment,
+  deletePayment,
 };
 
 export default paymentService;
