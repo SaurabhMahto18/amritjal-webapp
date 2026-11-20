@@ -122,6 +122,8 @@ export default function SignupPage() {
     };
   }, []);
 
+
+
   // ======================================
   // GOOGLE OAUTH CALLBACK
   // ======================================
@@ -147,6 +149,30 @@ export default function SignupPage() {
       setMessage("");
 
       try {
+        // Check OAuth callback errors
+        const oauthError =
+          params.get("error_description") ||
+          params.get("error");
+
+        if (oauthError) {
+          throw new Error(
+            decodeURIComponent(oauthError.replace(/\+/g, " "))
+          );
+        }
+
+        // Validate business name
+        if (
+          !returnedBusinessName ||
+          returnedBusinessName.length > 120
+        ) {
+          throw new Error(
+            "A valid business name is required."
+          );
+        }
+
+        // Get authenticated Google session.
+        // Supabase automatically handles the PKCE callback
+        // because detectSessionInUrl is enabled.
         const {
           data: { session },
           error: sessionError,
@@ -166,32 +192,12 @@ export default function SignupPage() {
           );
         }
 
-        if (!session.user.email_confirmed_at) {
-          throw new Error(
-            "Your Google email could not be confirmed. Please try again."
-          );
-        }
+        console.log(
+          "Google user authenticated:",
+          session.user.id
+        );
 
-        if (
-          !returnedBusinessName ||
-          returnedBusinessName.length > 120
-        ) {
-          throw new Error(
-            "A valid business name is required."
-          );
-        }
-
-        // Save business name in authenticated user's metadata.
-        const { error: updateError } =
-          await supabase.auth.updateUser({
-            data: {
-              business_name: returnedBusinessName,
-            },
-          });
-
-        if (updateError) throw updateError;
-
-        // Check whether this user already has business access.
+        // Check whether user already has business access
         const {
           data: accessData,
           error: accessError,
@@ -203,7 +209,6 @@ export default function SignupPage() {
           ? accessData[0]
           : accessData;
 
-        // Preserve existing active owner/member accounts.
         if (existingBusiness?.business_id) {
           window.history.replaceState(
             {},
@@ -215,26 +220,62 @@ export default function SignupPage() {
           return;
         }
 
-        // New Google user: submit business registration.
-        const { error: requestError } = await supabase.rpc(
+        // Update authenticated user metadata
+        const { error: updateError } =
+          await supabase.auth.updateUser({
+            data: {
+              business_name: returnedBusinessName,
+            },
+          });
+
+        if (updateError) throw updateError;
+
+        // Submit business registration request ONCE
+        const {
+          data: registrationData,
+          error: registrationError,
+        } = await supabase.rpc(
           "submit_business_registration",
           {
             p_business_name: returnedBusinessName,
           }
         );
 
-        if (requestError) throw requestError;
+        console.log(
+          "Registration response:",
+          registrationData
+        );
 
+        console.log(
+          "Registration error:",
+          registrationError
+        );
+
+        if (registrationError) {
+          throw registrationError;
+        }
+
+        if (
+          !Array.isArray(registrationData) ||
+          registrationData.length === 0
+        ) {
+          throw new Error(
+            "Registration request was not returned by the server."
+          );
+        }
+
+        // Show success only after successful registration
         setEmail(session.user.email);
         setBusinessName(returnedBusinessName);
         setGoogleSignupComplete(true);
 
-        // Remove OAuth callback parameters.
+        // Clean callback query parameters
         window.history.replaceState(
           {},
           document.title,
           window.location.pathname
         );
+
       } catch (err) {
         console.error(
           "Google registration failed:",
@@ -243,15 +284,18 @@ export default function SignupPage() {
 
         setError(
           err?.message ||
-            "Google registration could not be completed."
+          "Google registration could not be completed."
         );
+
       } finally {
         setGoogleLoading(false);
       }
     }
 
     completeGoogleSignup();
+
   }, [navigate]);
+
 
   // ======================================
   // EMAIL / PASSWORD SIGNUP
@@ -320,7 +364,7 @@ export default function SignupPage() {
 
       setError(
         err?.message ||
-          "Registration could not be completed."
+        "Registration could not be completed."
       );
     } finally {
       setLoading(false);
@@ -333,7 +377,6 @@ export default function SignupPage() {
 
   async function handleGoogleSignup() {
     setError("");
-    setMessage("");
 
     const normalizedBusinessName = businessName.trim();
 
@@ -343,13 +386,9 @@ export default function SignupPage() {
     }
 
     if (normalizedBusinessName.length > 120) {
-      setError(
-        "Business name cannot exceed 120 characters."
-      );
+      setError("Business name cannot exceed 120 characters.");
       return;
     }
-
-    if (loading || googleLoading) return;
 
     setGoogleLoading(true);
 
@@ -359,33 +398,26 @@ export default function SignupPage() {
         window.location.origin
       );
 
-      redirectUrl.searchParams.set(
-        "google_signup",
-        "1"
-      );
+      redirectUrl.searchParams.set("google_signup", "1");
 
       redirectUrl.searchParams.set(
         "business_name",
         normalizedBusinessName
       );
 
-      const { error: googleError } =
-        await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: redirectUrl.toString(),
-          },
-        });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl.toString(),
+        },
+      });
 
-      if (googleError) {
-        throw googleError;
-      }
-    } catch (err) {
-      console.error("Google signup error:", err);
+      if (error) throw error;
+    } catch (error) {
+      console.error("Google signup failed:", error);
 
       setError(
-        err?.message ||
-          "Google signup could not be started. Please try again."
+        error.message || "Google signup could not be started."
       );
 
       setGoogleLoading(false);
@@ -412,7 +444,7 @@ export default function SignupPage() {
     } catch (err) {
       setError(
         err?.message ||
-          "Could not resend the confirmation email."
+        "Could not resend the confirmation email."
       );
     } finally {
       setResending(false);

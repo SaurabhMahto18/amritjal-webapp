@@ -9,15 +9,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
 
-    // PWA configuration
     VitePWA({
-      // Prompt-based update avoids unexpectedly reloading
-      // pages where users may have unsaved form data.
       registerType: "prompt",
 
       includeAssets: [
-        "icons/apple-touch-icon.png",
-        "icons/favicon-48.png",
+        "apple-touch-icon.png",
+        "favicon-32x32.png",
+        "favicon.ico",
+        "favicon.svg"
       ],
 
       manifest: {
@@ -39,34 +38,28 @@ export default defineConfig({
 
         icons: [
           {
-            src: "/icons/icon-192.png",
+            src: "/icon-192.png",
             sizes: "192x192",
-            type: "image/png",
+            type: "image/png"
           },
           {
-            src: "/icons/icon-512.png",
+            src: "/icon-512.png",
             sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/icons/icon-512-maskable.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
+            type: "image/png"
+          }
+        ]
       },
 
       workbox: {
         globPatterns: [
-          "**/*.{js,css,html,ico,png,svg,webp,woff2}",
+          "**/*.{js,css,html,ico,png,svg,webp,woff2}"
         ],
-        cleanupOutdatedCaches: true,
-      },
-    }),
+        cleanupOutdatedCaches: true
+      }
+    })
   ],
 
-  // EXISTING BUILD OPTIMIZATION — PRESERVED
+  // EXISTING BUILD OPTIMIZATION PRESERVED
   build: {
     rolldownOptions: {
       output: {
@@ -78,42 +71,42 @@ export default defineConfig({
               name: "react-vendor",
               test:
                 /node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/,
-              priority: 30,
+              priority: 30
             },
             {
               name: "supabase-vendor",
               test: /node_modules[\\/]@supabase[\\/]/,
-              priority: 25,
+              priority: 25
             },
             {
               name: "pdf-vendor",
               test:
                 /node_modules[\\/](jspdf|jspdf-autotable|html2canvas)[\\/]/,
-              priority: 20,
+              priority: 20
             },
             {
               name: "spreadsheet-vendor",
               test: /node_modules[\\/](xlsx|papaparse)[\\/]/,
-              priority: 20,
+              priority: 20
             },
             {
               name: "qr-vendor",
               test: /node_modules[\\/]qrcode[\\/]/,
-              priority: 20,
+              priority: 20
             },
             {
               name: "icons-vendor",
               test: /node_modules[\\/]lucide-react[\\/]/,
-              priority: 15,
+              priority: 15
             },
             {
               name: "vendor",
               test: /node_modules[\\/]/,
-              priority: 1,
-            },
-          ],
-        },
-      },
-    },
-  },
+              priority: 1
+            }
+          ]
+        }
+      }
+    }
+  }
 });

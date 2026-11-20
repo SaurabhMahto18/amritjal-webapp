@@ -4,8 +4,13 @@ import {
   Route,
   Routes,
   Navigate,
-  Router,
 } from "react-router-dom";
+
+// ========================================
+// PWA INSTALL PROMPT
+// ========================================
+
+import PWAInstallPrompt from "../components/PWAInstallPrompt";
 
 // ========================================
 // PLATFORM ADMIN
@@ -119,8 +124,10 @@ import PaymentCreatePage from "../features/payments/pages/PaymentCreatePage";
 import ExpensesPage from "../features/expenses/pages/ExpensesPage";
 import ExpenseCreatePage from "../features/expenses/pages/ExpenseCreatePage";
 
+// ========================================
+// SUBSCRIPTION
+// ========================================
 
-// Subscription
 import PublicSubscriptionPage from "../features/subscription/pages/PublicSubscriptionPage";
 import SubscriptionCheckoutPage from "../features/subscription/pages/SubscriptionCheckoutPage";
 import SubscriptionPaymentSubmissionPage from "../features/subscription/pages/SubscriptionPaymentSubmissionPage";
@@ -188,6 +195,7 @@ import SmsSettingsPage from "../features/sms/pages/SmsSettingsPage";
 
 import EventsPage from "../features/events/pages/EventsPage";
 import EventDetailsPage from "../features/events/pages/EventDetailsPage";
+
 // ========================================
 // PLACEHOLDER PAGE
 // ========================================
@@ -225,6 +233,12 @@ function PlaceholderPage({ title, description }) {
 export default function AppRouter() {
   return (
     <BrowserRouter>
+
+      {/* Global PWA install prompt.
+          Must stay outside Routes. */}
+
+      <PWAInstallPrompt />
+
       <Routes>
 
         {/* =====================================
@@ -255,6 +269,11 @@ export default function AppRouter() {
             />
 
             <Route
+              path="businesses/:businessId"
+              element={<AdminBusinessDetails />}
+            />
+
+            <Route
               path="subscriptions"
               element={<AdminSubscriptions />}
             />
@@ -262,11 +281,6 @@ export default function AppRouter() {
             <Route
               path="settings"
               element={<AdminSettings />}
-            />
-
-            <Route
-              path="businesses/:businessId"
-              element={<AdminBusinessDetails />}
             />
 
             <Route
@@ -486,6 +500,7 @@ export default function AppRouter() {
               path="/events/:eventId"
               element={<EventDetailsPage />}
             />
+
             {/* Load / Unload */}
 
             <Route
@@ -554,20 +569,42 @@ export default function AppRouter() {
               element={<LedgerPage />}
             />
 
-
-
             {/* Subscription */}
 
-            <Route path="/subscription" element={<PublicSubscriptionPage />} />
-            <Route path="/subscription/checkout" element={<SubscriptionCheckoutPage />} />
-            <Route path="/subscription/payment-submission" element={<SubscriptionPaymentSubmissionPage />} />
-            <Route path="/subscription/payment-status" element={<SubscriptionPaymentStatusPage />} />
-            <Route path="/subscription/history" element={<SubscriptionHistoryPage />} />
-            <Route path="/subscription/my-plan" element={<MySubscriptionPage />} />
-            <Route path="/subscription/upgrade" element={<SubscriptionUpgradePage />} />
+            <Route
+              path="/subscription"
+              element={<PublicSubscriptionPage />}
+            />
 
+            <Route
+              path="/subscription/checkout"
+              element={<SubscriptionCheckoutPage />}
+            />
 
+            <Route
+              path="/subscription/payment-submission"
+              element={<SubscriptionPaymentSubmissionPage />}
+            />
 
+            <Route
+              path="/subscription/payment-status"
+              element={<SubscriptionPaymentStatusPage />}
+            />
+
+            <Route
+              path="/subscription/history"
+              element={<SubscriptionHistoryPage />}
+            />
+
+            <Route
+              path="/subscription/my-plan"
+              element={<MySubscriptionPage />}
+            />
+
+            <Route
+              path="/subscription/upgrade"
+              element={<SubscriptionUpgradePage />}
+            />
 
             {/* Invoices */}
 
@@ -694,10 +731,7 @@ export default function AppRouter() {
               element={<WhatsAppCenterPage />}
             />
 
-            {/* BUSINESS ANNOUNCEMENTS
-                IMPORTANT: Keep inside AppLayout
-                so Sidebar remains visible.
-            */}
+            {/* Business Announcements */}
 
             <Route
               path="/announcements"
