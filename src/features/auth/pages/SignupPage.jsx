@@ -1,6 +1,6 @@
 
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Droplets,
   Mail,
@@ -19,8 +19,10 @@ import {
 } from "lucide-react";
 
 import { useAuthContext } from "../providers/AuthProvider";
+import { supabase } from "../../../lib/supabase/client";
 
 const SEO_TITLE = "Create Account | Amrit Jal";
+
 const SEO_DESCRIPTION =
   "Create your Amrit Jal account to manage water delivery, customers, jar inventory and business payments.";
 
@@ -39,10 +41,14 @@ function updateMeta(name, content, attribute = "name") {
 }
 
 export default function SignupPage() {
-const {
-  signUp,
-  resendSignupConfirmation,
-} = useAuthContext();
+  const {
+    signUp,
+    resendSignupConfirmation,
+  } = useAuthContext();
+
+  const navigate = useNavigate();
+  const googleCallbackHandled = useRef(false);
+
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,13 +58,17 @@ const {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [emailSent, setEmailSent] = useState(false);
+  const [googleSignupComplete, setGoogleSignupComplete] =
+    useState(false);
+
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  // SEO metadata for an authentication page.
+  // SEO metadata
   useEffect(() => {
     const previousTitle = document.title;
 
@@ -73,6 +83,78 @@ const {
     };
   }, []);
 
+  // Handle Google OAuth return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    const isGoogleSignup =
+      params.get("google_signup") === "1";
+
+    const returnedBusinessName =
+      params.get("business_name") || "";
+
+    if (!isGoogleSignup || googleCallbackHandled.current) {
+      return;
+    }
+
+    googleCallbackHandled.current = true;
+
+    async function completeGoogleSignup() {
+      setGoogleLoading(true);
+      setError("");
+
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
+        if (!session?.user) {
+          throw new Error(
+            "Google authentication session was not found. Please try again."
+          );
+        }
+
+        // Save business name in Supabase user metadata.
+        if (returnedBusinessName.trim()) {
+          const { error: updateError } =
+            await supabase.auth.updateUser({
+              data: {
+                business_name: returnedBusinessName.trim(),
+              },
+            });
+
+          if (updateError) throw updateError;
+        }
+
+        setGoogleSignupComplete(true);
+        setEmail(session.user.email || "");
+        setBusinessName(returnedBusinessName);
+
+        // Remove OAuth query parameters from the URL.
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+      } catch (err) {
+        console.error("Google signup callback error:", err);
+
+        setError(
+          err.message ||
+            "Google signup could not be completed. Please try again."
+        );
+      } finally {
+        setGoogleLoading(false);
+      }
+    }
+
+    completeGoogleSignup();
+  }, []);
+
+  // Email/password signup
   async function handleSignup(event) {
     event.preventDefault();
 
@@ -125,42 +207,102 @@ const {
         "Your confirmation email has been sent successfully."
       );
     } catch (err) {
-      setError(err.message || "Registration could not be completed.");
+      setError(
+        err.message || "Registration could not be completed."
+      );
     } finally {
       setLoading(false);
     }
   }
 
- 
-async function handleResendEmail() {
-  if (!email || resending) return;
+  // Google signup
+  async function handleGoogleSignup() {
+    setError("");
+    setMessage("");
 
-  setError("");
-  setMessage("");
-  setResending(true);
+    const normalizedBusinessName = businessName.trim();
 
-  try {
-    await resendSignupConfirmation(email);
+    if (!normalizedBusinessName) {
+      setError("Please enter your business name first.");
+      return;
+    }
 
-    setMessage(
-      "A new confirmation email has been requested. Please check your inbox."
-    );
-  } catch (err) {
-    setError(
-      err.message || "Could not resend the confirmation email."
-    );
-  } finally {
-    setResending(false);
+    if (normalizedBusinessName.length > 120) {
+      setError("Business name cannot exceed 120 characters.");
+      return;
+    }
+
+    if (loading || googleLoading) return;
+
+    setGoogleLoading(true);
+
+    try {
+      const redirectUrl = new URL(
+        "/signup",
+        window.location.origin
+      );
+
+      redirectUrl.searchParams.set("google_signup", "1");
+      redirectUrl.searchParams.set(
+        "business_name",
+        normalizedBusinessName
+      );
+
+      const { error: googleError } =
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: redirectUrl.toString(),
+          },
+        });
+
+      if (googleError) {
+        throw googleError;
+      }
+    } catch (err) {
+      console.error("Google signup error:", err);
+
+      setError(
+        err.message ||
+          "Google signup could not be started. Please try again."
+      );
+
+      setGoogleLoading(false);
+    }
   }
-}
 
+  // Resend email confirmation
+  async function handleResendEmail() {
+    if (!email || resending) return;
+
+    setError("");
+    setMessage("");
+    setResending(true);
+
+    try {
+      await resendSignupConfirmation(email);
+
+      setMessage(
+        "A new confirmation email has been requested. Please check your inbox."
+      );
+    } catch (err) {
+      setError(
+        err.message ||
+          "Could not resend the confirmation email."
+      );
+    } finally {
+      setResending(false);
+    }
+  }
 
   const inputClass =
     "w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-cyan-600 focus:ring-4 focus:ring-cyan-50";
 
+  const isSubmitting = loading || googleLoading;
+
   return (
     <main className="min-h-screen bg-[#F3FBFF] text-slate-800">
-      {/* Responsive header */}
+      {/* Header */}
       <header className="border-b border-slate-200/70 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link
@@ -176,6 +318,7 @@ async function handleResendEmail() {
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
                 Amrit<span className="text-cyan-700"> Jal</span>
               </h1>
+
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Water Business Management
               </p>
@@ -186,6 +329,7 @@ async function handleResendEmail() {
             <span className="hidden text-slate-500 sm:inline">
               Already have an account?
             </span>
+
             <Link
               to="/login"
               className="rounded-lg px-3 py-2 font-bold text-cyan-800 transition hover:bg-cyan-50"
@@ -197,7 +341,7 @@ async function handleResendEmail() {
       </header>
 
       <div className="mx-auto grid min-h-[calc(100vh-77px)] max-w-7xl items-center gap-10 px-4 py-7 sm:px-6 sm:py-12 lg:grid-cols-[1fr_0.9fr] lg:gap-16 lg:px-8">
-        {/* Brand / desktop section */}
+        {/* Brand section */}
         <section className="hidden lg:block">
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-white px-4 py-2 text-sm font-semibold text-cyan-800 shadow-sm">
@@ -239,7 +383,10 @@ async function handleResendEmail() {
                 const Icon = item.icon;
 
                 return (
-                  <div key={item.title} className="flex items-center gap-4">
+                  <div
+                    key={item.title}
+                    className="flex items-center gap-4"
+                  >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm ring-1 ring-slate-100">
                       <Icon size={22} />
                     </div>
@@ -248,6 +395,7 @@ async function handleResendEmail() {
                       <h3 className="font-bold text-slate-800">
                         {item.title}
                       </h3>
+
                       <p className="mt-1 text-sm text-slate-500">
                         {item.description}
                       </p>
@@ -268,15 +416,17 @@ async function handleResendEmail() {
             </div>
 
             <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
-              {emailSent
-                ? "Check your inbox"
+              {emailSent || googleSignupComplete
+                ? "Account setup"
                 : "Grow your water business."}
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
               {emailSent
                 ? "One final step to activate your account."
-                : "Everything your water business needs, in one place."}
+                : googleSignupComplete
+                  ? "Your Google account has been connected."
+                  : "Everything your water business needs, in one place."}
             </p>
           </div>
 
@@ -284,7 +434,7 @@ async function handleResendEmail() {
             <div className="h-1.5 bg-cyan-700" />
 
             <div className="p-5 sm:p-8">
-              {!emailSent ? (
+              {!emailSent && !googleSignupComplete ? (
                 <>
                   <div className="mb-7">
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
@@ -304,39 +454,98 @@ async function handleResendEmail() {
                     </p>
                   </div>
 
-                  <form onSubmit={handleSignup} className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="business-name"
-                        className="mb-2 block text-sm font-semibold text-slate-700"
-                      >
-                        Business name
-                      </label>
+                  {/* Business name is required for both signup methods */}
+                  <div className="mb-5">
+                    <label
+                      htmlFor="business-name"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Business name
+                    </label>
 
-                      <div className="relative">
-                        <Building2
-                          size={18}
-                          aria-hidden="true"
-                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                        />
+                    <div className="relative">
+                      <Building2
+                        size={18}
+                        aria-hidden="true"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
 
-                        <input
-                          id="business-name"
-                          name="organization"
-                          type="text"
-                          required
-                          maxLength={120}
-                          autoComplete="organization"
-                          value={businessName}
-                          onChange={(event) =>
-                            setBusinessName(event.target.value)
-                          }
-                          placeholder="Enter business name"
-                          className={`${inputClass} pl-11`}
-                        />
-                      </div>
+                      <input
+                        id="business-name"
+                        name="organization"
+                        type="text"
+                        required
+                        maxLength={120}
+                        autoComplete="organization"
+                        value={businessName}
+                        onChange={(event) =>
+                          setBusinessName(event.target.value)
+                        }
+                        placeholder="Enter business name"
+                        className={`${inputClass} pl-11`}
+                        disabled={isSubmitting}
+                      />
                     </div>
+                  </div>
 
+                  {/* Google Signup */}
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignup}
+                    disabled={isSubmitting}
+                    className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-cyan-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {googleLoading ? (
+                      <LoaderCircle
+                        size={19}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <svg
+                        viewBox="0 0 48 48"
+                        width="20"
+                        height="20"
+                        aria-hidden="true"
+                      >
+                        <path
+                          fill="#EA4335"
+                          d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                        />
+                        <path
+                          fill="#4285F4"
+                          d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.25 5.48-4.73 7.18l7.66 5.95c4.48-4.13 7.11-10.22 7.11-17.6z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M24 48c6.48 0 11.93-2.13 15.91-5.85l-7.66-5.95c-2.13 1.43-4.86 2.27-8.25 2.27-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                        />
+                      </svg>
+                    )}
+
+                    {googleLoading
+                      ? "Connecting to Google..."
+                      : "Continue with Google"}
+                  </button>
+
+                  <div className="my-6 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-slate-200" />
+
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      Or sign up with email
+                    </span>
+
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+
+                  {/* Email signup */}
+                  <form
+                    onSubmit={handleSignup}
+                    className="space-y-4"
+                  >
                     <div>
                       <label
                         htmlFor="signup-email"
@@ -364,6 +573,7 @@ async function handleResendEmail() {
                           }
                           placeholder="you@example.com"
                           className={`${inputClass} pl-11`}
+                          disabled={isSubmitting}
                         />
                       </div>
                     </div>
@@ -396,12 +606,15 @@ async function handleResendEmail() {
                           }
                           placeholder="Minimum 8 characters"
                           className={`${inputClass} pl-11 pr-12`}
+                          disabled={isSubmitting}
                         />
 
                         <button
                           type="button"
                           aria-label={
-                            showPassword ? "Hide password" : "Show password"
+                            showPassword
+                              ? "Hide password"
+                              : "Show password"
                           }
                           onClick={() =>
                             setShowPassword((value) => !value)
@@ -435,7 +648,9 @@ async function handleResendEmail() {
                         <input
                           id="confirm-password"
                           name="confirm-password"
-                          type={showConfirmPassword ? "text" : "password"}
+                          type={
+                            showConfirmPassword ? "text" : "password"
+                          }
                           required
                           autoComplete="new-password"
                           value={confirmPassword}
@@ -444,6 +659,7 @@ async function handleResendEmail() {
                           }
                           placeholder="Re-enter your password"
                           className={`${inputClass} pl-11 pr-12`}
+                          disabled={isSubmitting}
                         />
 
                         <button
@@ -478,7 +694,7 @@ async function handleResendEmail() {
 
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={isSubmitting}
                       className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-5 py-3.5 font-bold text-white transition hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {loading ? (
@@ -498,7 +714,62 @@ async function handleResendEmail() {
                     </button>
                   </form>
                 </>
+              ) : googleSignupComplete ? (
+                /* Google signup success */
+                <div className="py-3 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <CheckCircle2 size={32} />
+                  </div>
+
+                  <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+                    Google account connected
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-extrabold text-slate-900 sm:text-3xl">
+                    Welcome to Amrit Jal
+                  </h2>
+
+                  <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
+                    Your Google account has been authenticated and
+                    your business name has been saved to your user
+                    profile.
+                  </p>
+
+                  <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Business name
+                    </p>
+
+                    <p className="mt-1 font-bold text-slate-900">
+                      {businessName}
+                    </p>
+
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Google account
+                    </p>
+
+                    <p className="mt-1 break-all text-sm font-medium text-slate-800">
+                      {email}
+                    </p>
+                  </div>
+
+                  <p className="mt-4 text-xs leading-5 text-amber-700">
+                    If your business workspace has not been created
+                    automatically, complete the business setup before
+                    using the dashboard.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/dashboard", { replace: true })}
+                    className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-5 py-3 font-bold text-white transition hover:bg-cyan-800"
+                  >
+                    Continue to dashboard
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
               ) : (
+                /* Email confirmation success */
                 <div className="py-3 text-center">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
                     <Mail size={30} />
@@ -513,13 +784,17 @@ async function handleResendEmail() {
                   </h2>
 
                   <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500">
-                    We sent a confirmation link to the email address below.
-                    Open that email and click the confirmation link to
-                    verify your account.
+                    We sent a confirmation link to the email address
+                    below. Open that email and click the confirmation
+                    link to verify your account.
                   </p>
 
                   <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
-                    <Mail size={20} className="shrink-0 text-cyan-700" />
+                    <Mail
+                      size={20}
+                      className="shrink-0 text-cyan-700"
+                    />
+
                     <p className="break-all text-sm font-bold text-slate-800">
                       {email}
                     </p>
@@ -536,10 +811,12 @@ async function handleResendEmail() {
                         <Check size={16} className="mt-0.5 shrink-0" />
                         Open your confirmation email.
                       </li>
+
                       <li className="flex gap-2">
                         <Check size={16} className="mt-0.5 shrink-0" />
                         Click Confirm email address.
                       </li>
+
                       <li className="flex gap-2">
                         <Check size={16} className="mt-0.5 shrink-0" />
                         Return to Amrit Jal and sign in.
@@ -548,7 +825,10 @@ async function handleResendEmail() {
                   </div>
 
                   {message && (
-                    <p role="status" className="mt-4 text-sm text-emerald-700">
+                    <p
+                      role="status"
+                      className="mt-4 text-sm text-emerald-700"
+                    >
                       {message}
                     </p>
                   )}
@@ -569,10 +849,14 @@ async function handleResendEmail() {
                     className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                   >
                     {resending ? (
-                      <LoaderCircle size={17} className="animate-spin" />
+                      <LoaderCircle
+                        size={17}
+                        className="animate-spin"
+                      />
                     ) : (
                       <RefreshCw size={17} />
                     )}
+
                     Resend confirmation email
                   </button>
 
@@ -598,16 +882,32 @@ async function handleResendEmail() {
                   </button>
                 </div>
               )}
+
+              {error && !emailSent && !googleSignupComplete && (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {error}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
             <span className="flex items-center gap-1.5">
-              <ShieldCheck size={15} className="text-emerald-600" />
+              <ShieldCheck
+                size={15}
+                className="text-emerald-600"
+              />
               Secure registration
             </span>
+
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 size={15} className="text-cyan-700" />
+              <CheckCircle2
+                size={15}
+                className="text-cyan-700"
+              />
               Email verification
             </span>
           </div>

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { useAuthContext } from "../providers/AuthProvider";
+import { supabase } from "../../../lib/supabase/client";
 
 export default function LoginPage() {
   const { signIn } = useAuthContext();
@@ -26,7 +27,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -60,6 +64,18 @@ export default function LoginPage() {
     };
   }, []);
 
+  // Get destination after successful authentication
+  const getDestination = () => {
+    const destination = location.state?.from;
+
+    if (!destination) return "/dashboard";
+
+    return `${destination.pathname || "/dashboard"}${
+      destination.search || ""
+    }${destination.hash || ""}`;
+  };
+
+  // Email and password login
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -69,14 +85,9 @@ export default function LoginPage() {
     try {
       await signIn(email.trim().toLowerCase(), password);
 
-      const destination = location.state?.from;
-
-      navigate(
-        destination
-          ? `${destination.pathname || "/dashboard"}${destination.search || ""}${destination.hash || ""}`
-          : "/dashboard",
-        { replace: true }
-      );
+      navigate(getDestination(), {
+        replace: true,
+      });
     } catch (err) {
       setError(
         err.message || "Login nahi ho paya. Details check karein."
@@ -86,8 +97,43 @@ export default function LoginPage() {
     }
   }
 
+  // Google OAuth login
+  async function handleGoogleLogin() {
+    if (googleLoading || loading) return;
+
+    setError("");
+    setGoogleLoading(true);
+
+    try {
+      const redirectTo =
+        `${window.location.origin}${getDestination()}`;
+
+      const { error: googleError } =
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo,
+          },
+        });
+
+      if (googleError) {
+        throw googleError;
+      }
+    } catch (err) {
+      console.error("Google Login Error:", err);
+
+      setError(
+        err.message || "Google login nahi ho paya. Please try again."
+      );
+
+      setGoogleLoading(false);
+    }
+  }
+
   const inputClass =
     "w-full bg-transparent py-3.5 text-sm text-slate-800 outline-none placeholder:text-slate-400";
+
+  const isSubmitting = loading || googleLoading;
 
   return (
     <main className="min-h-screen bg-[#F3FBFF] text-slate-800">
@@ -107,6 +153,7 @@ export default function LoginPage() {
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
                 Amrit<span className="text-cyan-700"> Jal</span>
               </h1>
+
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Water Business Management
               </p>
@@ -124,7 +171,7 @@ export default function LoginPage() {
 
       <div className="mx-auto grid min-h-[calc(100vh-77px)] max-w-7xl items-center gap-10 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-16 lg:px-8">
 
-        {/* Desktop brand section */}
+        {/* Desktop Brand Section */}
         <section className="hidden lg:block">
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-white px-4 py-2 text-sm font-semibold text-cyan-800 shadow-sm">
@@ -165,7 +212,10 @@ export default function LoginPage() {
                 const Icon = item.icon;
 
                 return (
-                  <div key={item.title} className="flex items-center gap-4">
+                  <div
+                    key={item.title}
+                    className="flex items-center gap-4"
+                  >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm ring-1 ring-slate-100">
                       <Icon size={22} />
                     </div>
@@ -174,6 +224,7 @@ export default function LoginPage() {
                       <h3 className="font-bold text-slate-800">
                         {item.title}
                       </h3>
+
                       <p className="mt-1 text-sm text-slate-500">
                         {item.description}
                       </p>
@@ -185,19 +236,25 @@ export default function LoginPage() {
 
             <div className="mt-10 flex flex-wrap gap-5 text-sm font-medium text-slate-600">
               <span className="flex items-center gap-2">
-                <CheckCircle2 size={18} className="text-emerald-600" />
+                <CheckCircle2
+                  size={18}
+                  className="text-emerald-600"
+                />
                 Simple management
               </span>
 
               <span className="flex items-center gap-2">
-                <ShieldCheck size={18} className="text-cyan-700" />
+                <ShieldCheck
+                  size={18}
+                  className="text-cyan-700"
+                />
                 Secure login
               </span>
             </div>
           </div>
         </section>
 
-        {/* Login form */}
+        {/* Login Form */}
         <section className="mx-auto w-full max-w-lg">
           <div className="mb-6 lg:hidden">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-700">
@@ -235,7 +292,65 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Google Login */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isSubmitting}
+                className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-cyan-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {googleLoading ? (
+                  <LoaderCircle
+                    size={19}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <svg
+                    viewBox="0 0 48 48"
+                    width="20"
+                    height="20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="#EA4335"
+                      d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.25 5.48-4.73 7.18l7.66 5.95c4.48-4.13 7.11-10.22 7.11-17.6z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M24 48c6.48 0 11.93-2.13 15.91-5.85l-7.66-5.95c-2.13 1.43-4.86 2.27-8.25 2.27-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                    />
+                  </svg>
+                )}
+
+                {googleLoading
+                  ? "Connecting to Google..."
+                  : "Continue with Google"}
+              </button>
+
+              {/* Divider */}
+              <div className="my-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200" />
+
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Or continue with email
+                </span>
+
+                <div className="h-px flex-1 bg-slate-200" />
+              </div>
+
+              {/* Email Login */}
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-5"
+              >
                 <div>
                   <label
                     htmlFor="login-email"
@@ -258,9 +373,12 @@ export default function LoginPage() {
                       autoComplete="username"
                       required
                       value={email}
-                      onChange={(event) => setEmail(event.target.value)}
+                      onChange={(event) =>
+                        setEmail(event.target.value)
+                      }
                       placeholder="you@example.com"
                       className={inputClass}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -296,18 +414,29 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       required
                       value={password}
-                      onChange={(event) => setPassword(event.target.value)}
+                      onChange={(event) =>
+                        setPassword(event.target.value)
+                      }
                       placeholder="Enter your password"
                       className={inputClass}
+                      disabled={isSubmitting}
                     />
 
                     <button
                       type="button"
-                      onClick={() => setShowPassword((value) => !value)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      onClick={() =>
+                        setShowPassword((value) => !value)
+                      }
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                       className="shrink-0 text-slate-400 hover:text-cyan-700"
                     >
-                      {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                      {showPassword ? (
+                        <EyeOff size={19} />
+                      ) : (
+                        <Eye size={19} />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -323,12 +452,15 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={isSubmitting}
                   className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-cyan-700 px-5 py-3.5 font-bold text-white transition hover:bg-cyan-800 focus:outline-none focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? (
                     <>
-                      <LoaderCircle size={19} className="animate-spin" />
+                      <LoaderCircle
+                        size={19}
+                        className="animate-spin"
+                      />
                       Logging in...
                     </>
                   ) : (
@@ -340,11 +472,14 @@ export default function LoginPage() {
                 </button>
               </form>
 
+              {/* Signup */}
               <div className="my-7 flex items-center gap-3">
                 <div className="h-px flex-1 bg-slate-100" />
+
                 <span className="text-[10px] font-semibold tracking-wider text-slate-400">
                   NEW TO AMRIT JAL?
                 </span>
+
                 <div className="h-px flex-1 bg-slate-100" />
               </div>
 
@@ -359,7 +494,10 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-5 flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
-            <ShieldCheck size={15} className="text-emerald-600" />
+            <ShieldCheck
+              size={15}
+              className="text-emerald-600"
+            />
             Secure access to your business
           </div>
         </section>
