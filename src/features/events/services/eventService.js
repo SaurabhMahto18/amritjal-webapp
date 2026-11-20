@@ -1,3 +1,4 @@
+
 import { supabase } from "../../../lib/supabase";
 
 const TABLE = "events";
@@ -62,6 +63,7 @@ function normalizeEvent(row) {
 }
 
 const eventService = {
+  // GET CUSTOMERS
   async getCustomers() {
     const businessId = await getBusinessId();
 
@@ -76,6 +78,7 @@ const eventService = {
     return data || [];
   },
 
+  // GET ALL EVENTS
   async getAll() {
     const businessId = await getBusinessId();
 
@@ -110,6 +113,7 @@ const eventService = {
     return (data || []).map(normalizeEvent);
   },
 
+  // CREATE EVENT
   async create(input) {
     const businessId = await getBusinessId();
 
@@ -145,6 +149,7 @@ const eventService = {
     return data;
   },
 
+  // UPDATE EVENT
   async update(id, input) {
     const businessId = await getBusinessId();
 
@@ -177,16 +182,28 @@ const eventService = {
     if (error) throw error;
   },
 
+  // DELETE EVENT + RELATED RECORDS
   async remove(id) {
-    const businessId = await getBusinessId();
+    if (!id) {
+      throw new Error("Event ID is required.");
+    }
 
-    const { error } = await supabase
-      .from(TABLE)
-      .delete()
-      .eq("id", id)
-      .eq("business_id", businessId);
+    const { data, error } = await supabase.rpc(
+      "delete_event_with_related_records",
+      {
+        p_event_id: id,
+      }
+    );
 
     if (error) throw error;
+
+    if (!data?.success) {
+      throw new Error(
+        data?.message || "Event could not be deleted."
+      );
+    }
+
+    return data;
   },
 };
 

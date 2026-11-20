@@ -51,6 +51,12 @@ const getInitialForm = (initialData = {}) => ({
     initialData.shift ||
     "morning",
 
+  booking_time:
+    initialData.booking_time ||
+    initialData.bookingTime ||
+    initialData.time ||
+    "",
+
   delivered_by:
     initialData.delivered_by ||
     initialData.deliveredBy ||
@@ -68,9 +74,11 @@ const currency = new Intl.NumberFormat("en-IN", {
 const inputClass =
   "w-full min-h-[40px] sm:min-h-[46px] rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2.5 sm:px-3.5 py-2 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 
-function createProductRow(plan, product) {
+function createProductRow(plan, product, existingItem = null) {
   return {
-    rowId: `${product.id}-${Date.now()}-${Math.random()}`,
+    rowId:
+      existingItem?.id ||
+      `${product.id}-${Date.now()}-${Math.random()}`,
 
     productId: product.id,
     productName: product.name,
@@ -80,16 +88,28 @@ function createProductRow(plan, product) {
     isReturnableJar: Boolean(product.is_returnable_jar),
 
     quantity: String(
-      Number(plan.default_quantity) > 0
-        ? plan.default_quantity
-        : 1
+      existingItem?.quantity ??
+        existingItem?.quantity_delivered ??
+        (Number(plan.default_quantity) > 0
+          ? plan.default_quantity
+          : 1)
     ),
 
-    returned: "0",
+    returned: String(
+      existingItem?.returned ??
+        existingItem?.quantity_returned ??
+        0
+    ),
 
     unitPrice: String(
-      plan.unit_price ?? product.sale_price ?? 0
+      existingItem?.unitPrice ??
+        existingItem?.unit_price ??
+        plan.unit_price ??
+        product.sale_price ??
+        0
     ),
+
+    notes: existingItem?.notes || "",
   };
 }
 
@@ -117,6 +137,8 @@ export default function DeliveryForm({
 
   const [error, setError] = useState("");
   const [productError, setProductError] = useState("");
+
+  const isEditing = Boolean(initialData?.id);
 
   /* ---------------------------------
      Selected records
@@ -171,7 +193,7 @@ export default function DeliveryForm({
         (sum, row) =>
           sum +
           Number(row.quantity || 0) *
-          Number(row.unitPrice || 0),
+            Number(row.unitPrice || 0),
         0
       ),
     [validRows]
@@ -263,30 +285,123 @@ export default function DeliveryForm({
           })
           .filter(Boolean);
 
+        const mappedById = new Map(
+          mapped.map((product) => [
+            product.productId,
+            product,
+          ])
+        );
+
+        /*
+         * When editing, preserve previously saved products.
+         * This also supports products whose customer rate plan
+         * has been removed after the original booking.
+         */
+        const existingItems =
+          isEditing && Array.isArray(initialData?.items)
+            ? initialData.items
+            : [];
+
+        for (const item of existingItems) {
+          const productId =
+            item.productId || item.product_id;
+
+          if (!productId || mappedById.has(productId)) {
+            continue;
+          }
+
+          const product = productMap.get(productId);
+
+          if (!product) continue;
+
+          const fallbackProduct = {
+            planId: null,
+            productId: product.id,
+            productName: product.name,
+            sku: product.sku || "",
+            unit: product.unit || "unit",
+
+            salePrice: Number(product.sale_price || 0),
+
+            unitPrice: Number(
+              item.unitPrice ??
+                item.unit_price ??
+                product.sale_price ??
+                0
+            ),
+
+            defaultQuantity: 1,
+
+            isReturnableJar: Boolean(
+              product.is_returnable_jar
+            ),
+          };
+
+          mapped.push(fallbackProduct);
+
+          mappedById.set(
+            productId,
+            fallbackProduct
+          );
+        }
+
         setAssignedProducts(mapped);
 
-        // Preserve rows where the product remains assigned.
-        setProductRows((previous) => {
-          if (previous.length === 0) return [];
+        if (isEditing) {
+          const restoredRows = existingItems
+            .map((item) => {
+              const productId =
+                item.productId || item.product_id;
 
-          return previous
-            .map((row) => {
-              const updated = mapped.find(
-                (product) =>
-                  product.productId === row.productId
+              const product = mappedById.get(productId);
+
+              if (!product) return null;
+
+              return createProductRow(
+                {
+                  default_quantity: product.defaultQuantity,
+                  unit_price: product.unitPrice,
+                },
+                {
+                  id: product.productId,
+                  name: product.productName,
+                  unit: product.unit,
+                  is_returnable_jar:
+                    product.isReturnableJar,
+                },
+                item
               );
-
-              if (!updated) return null;
-
-              return {
-                ...row,
-                productName: updated.productName,
-                unit: updated.unit,
-                isReturnableJar: updated.isReturnableJar,
-              };
             })
             .filter(Boolean);
-        });
+
+          setProductRows(restoredRows);
+        } else {
+          /*
+           * In create mode preserve manually selected rows
+           * when the date changes and rate plans reload.
+           */
+          setProductRows((previous) => {
+            if (!previous.length) return [];
+
+            return previous
+              .map((row) => {
+                const updated = mappedById.get(
+                  row.productId
+                );
+
+                if (!updated) return null;
+
+                return {
+                  ...row,
+                  productName: updated.productName,
+                  unit: updated.unit,
+                  isReturnableJar:
+                    updated.isReturnableJar,
+                };
+              })
+              .filter(Boolean);
+          });
+        }
       } catch (err) {
         if (active) {
           setProductError(
@@ -306,7 +421,11 @@ export default function DeliveryForm({
     return () => {
       active = false;
     };
-  }, [form.customer_id, form.delivery_date]);
+  }, [
+    form.customer_id,
+    form.delivery_date,
+    initialData?.id,
+  ]);
 
   /* ---------------------------------
      Reset when editing another delivery
@@ -314,11 +433,26 @@ export default function DeliveryForm({
 
   useEffect(() => {
     setForm(getInitialForm(initialData));
+
     setProductRows([]);
     setAssignedProducts([]);
+
     setError("");
     setProductError("");
-  }, [initialData]);
+  }, [
+    initialData?.id,
+    initialData?.customer_id,
+    initialData?.customerId,
+    initialData?.delivery_date,
+    initialData?.date,
+    initialData?.booking_time,
+    initialData?.bookingTime,
+    initialData?.delivery_shift,
+    initialData?.shift,
+    initialData?.delivered_by,
+    initialData?.deliveredBy,
+    initialData?.notes,
+  ]);
 
   /* ---------------------------------
      Form handlers
@@ -343,6 +477,7 @@ export default function DeliveryForm({
 
     setProductRows([]);
     setAssignedProducts([]);
+
     setProductError("");
     setError("");
   }
@@ -374,7 +509,6 @@ export default function DeliveryForm({
     ]);
   }
 
-  // Update a product using its unique rowId.
   function updateProductRow(rowId, field, value) {
     setProductRows((previous) =>
       previous.map((row) =>
@@ -405,7 +539,8 @@ export default function DeliveryForm({
               productName: product.productName,
               unit: product.unit,
 
-              isReturnableJar: product.isReturnableJar,
+              isReturnableJar:
+                product.isReturnableJar,
 
               quantity: String(
                 product.defaultQuantity > 0
@@ -415,6 +550,7 @@ export default function DeliveryForm({
 
               returned: "0",
               unitPrice: String(product.unitPrice),
+              notes: "",
             }
           : row
       )
@@ -544,6 +680,8 @@ export default function DeliveryForm({
         : 0,
 
       unitPrice: Number(row.unitPrice),
+
+      notes: row.notes || null,
     }));
 
     const employeeName =
@@ -555,9 +693,13 @@ export default function DeliveryForm({
       setSaving(true);
 
       await onSubmit({
+        id: initialData?.id || null,
+
         customerId: form.customer_id,
         date: form.delivery_date,
         shift: form.delivery_shift,
+
+        bookingTime: form.booking_time || null,
 
         deliveredBy: form.delivered_by || null,
         deliveryPerson: employeeName,
@@ -569,6 +711,7 @@ export default function DeliveryForm({
         customer_id: form.customer_id,
         delivery_date: form.delivery_date,
         delivery_shift: form.delivery_shift,
+        booking_time: form.booking_time || null,
         delivered_by: form.delivered_by || null,
       });
     } catch (err) {
@@ -585,7 +728,10 @@ export default function DeliveryForm({
   --------------------------------- */
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 pb-20 sm:space-y-6 sm:pb-0">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-3 pb-20 sm:space-y-6 sm:pb-0"
+    >
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
 
         {/* Header */}
@@ -598,7 +744,7 @@ export default function DeliveryForm({
               </div>
 
               <h2 className="text-lg font-bold tracking-tight sm:text-3xl">
-                New Delivery
+                {isEditing ? "Edit Delivery" : "New Delivery"}
               </h2>
 
               <p className="mt-0.5 hidden text-sm text-slate-300 sm:mt-1.5 sm:block">
@@ -729,6 +875,25 @@ export default function DeliveryForm({
                 />
               </div>
 
+              {/* Booking Time */}
+              <div>
+                <label
+                  htmlFor="delivery-booking-time"
+                  className="mb-1.5 block text-xs font-semibold text-slate-700 sm:mb-2 sm:text-sm"
+                >
+                  Booking Time
+                </label>
+
+                <input
+                  id="delivery-booking-time"
+                  name="booking_time"
+                  type="time"
+                  value={form.booking_time}
+                  onChange={handleFormChange}
+                  className={inputClass}
+                />
+              </div>
+
               {/* Shift */}
               <div>
                 <label
@@ -753,7 +918,7 @@ export default function DeliveryForm({
               </div>
 
               {/* Employee */}
-              <div className="md:col-span-2">
+              <div>
                 <label
                   htmlFor="delivery-employee"
                   className="mb-2 block text-sm font-semibold text-slate-700"
@@ -965,6 +1130,7 @@ export default function DeliveryForm({
 
                     {/* Quantity and rate grid */}
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+
                       {/* Delivered */}
                       <div>
                         <label className="mb-2 block text-xs font-semibold text-slate-600">
@@ -1053,10 +1219,10 @@ export default function DeliveryForm({
                                 0,
                                 Number(row.quantity) || 0
                               ) *
-                              Math.max(
-                                0,
-                                Number(row.unitPrice) || 0
-                              )
+                                Math.max(
+                                  0,
+                                  Number(row.unitPrice) || 0
+                                )
                             )}
                           </span>
                         </div>
