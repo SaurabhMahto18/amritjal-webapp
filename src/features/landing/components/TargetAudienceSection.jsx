@@ -177,7 +177,7 @@ export default function TargetAudienceSection() {
     <section
       id="who-its-for"
       aria-labelledby="audience-heading"
-      className="relative isolate overflow-hidden bg-[#F7F6F0] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24 xl:px-16"
+      className="relative isolate overflow-hidden bg-[#EAF3F5] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24 xl:px-16"
     >
       {/* Background decoration */}
       <div className="pointer-events-none absolute -left-40 top-10 -z-10 size-80 rounded-full bg-[#087E80]/[0.05] blur-[100px]" />

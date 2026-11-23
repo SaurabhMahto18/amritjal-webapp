@@ -52,7 +52,7 @@ export default function AboutSection() {
       aria-label="About Amrit Jal"
       className="
         relative isolate scroll-mt-24 overflow-hidden
-        bg-[#daf0ee] px-4 py-16
+        bg-[#E8F2EB] px-4 py-16
         sm:px-6 sm:py-20 lg:px-10 lg:py-24
       "
     >

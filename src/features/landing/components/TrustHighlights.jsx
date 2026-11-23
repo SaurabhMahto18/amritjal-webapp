@@ -40,7 +40,7 @@ const items = [
 
 export default function TrustHighlights() {
   return (
-    <section className="relative overflow-hidden border-y border-[#EDEAE0] bg-[#daf0ee]">
+    <section className="relative overflow-hidden border-y border-[#EDEAE0] bg-[#F4F0E7]">
       {/* Subtle background accents */}
       <div className="pointer-events-none absolute -left-20 top-0 size-48 rounded-full bg-[#087E80]/[0.04] blur-[80px]" />
       <div className="pointer-events-none absolute -right-20 bottom-0 size-48 rounded-full bg-[#E9CA43]/[0.08] blur-[80px]" />
@@ -71,7 +71,7 @@ export default function TrustHighlights() {
               className="
                 group relative flex min-w-0 items-start gap-3
                 overflow-hidden rounded-2xl border border-[#EDEAE0]
-                bg-[#F7F6F0] p-3.5
+                bg-white p-3.5
                 transition-all duration-300
                 hover:-translate-y-1 hover:border-[#087E80]/30
                 hover:bg-white hover:shadow-[0_12px_30px_rgba(36,38,43,0.07)]
