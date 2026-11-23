@@ -529,12 +529,44 @@ export default function DashboardPage() {
   ];
 
   return (
-    <main className="min-h-screen w-full overflow-x-clip bg-[#f4f7fa] px-2.5 py-3 text-slate-900 sm:px-6 sm:py-6 lg:px-8">
-      <div className="mx-auto w-full max-w-[1600px] space-y-3 sm:space-y-5">
+    <main className="min-h-screen w-full overflow-x-clip bg-[#f4f7fa] px-3 pb-28 pt-3 font-sans text-slate-900 antialiased sm:px-6 sm:py-6 sm:pb-28 lg:px-8 md:pb-6">
+      <div className="mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-5">
 
-        {/* HEADER */}
+        {/* MOBILE APP HEADER */}
+        <section className="md:hidden">
+          
 
-        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+          <div className="mt-1 flex items-center justify-between rounded-2xl border border-teal-100 bg-white px-3.5 py-3 shadow-sm">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="rounded-xl bg-teal-50 p-2 text-teal-800">
+                <CalendarDays size={17} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Business overview</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-800">{formatDate(summary?.today)}</p>
+              </div>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live data
+            </span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <button type="button" onClick={() => navigate("/payments")} className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-2 text-[11px] font-semibold text-slate-700 shadow-sm active:scale-[0.98]">
+              <HandCoins size={19} className="text-teal-700" /> Payments
+            </button>
+            <button type="button" onClick={() => navigate("/invoices")} className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-2 text-[11px] font-semibold text-slate-700 shadow-sm active:scale-[0.98]">
+              <Receipt size={19} className="text-amber-600" /> Invoices
+            </button>
+            <button type="button" onClick={() => navigate("/deliveries")} className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-2 text-[11px] font-semibold text-slate-700 shadow-sm active:scale-[0.98]">
+              <Package size={19} className="text-sky-700" /> Deliveries
+            </button>
+          </div>
+        </section>
+
+        {/* DESKTOP / TABLET HEADER */}
+
+        <header className="hidden flex-col justify-between gap-5 md:flex sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-semibold text-teal-800">
               AMRIT JAL
@@ -572,7 +604,7 @@ export default function DashboardPage() {
 
         {/* STATUS BANNER */}
 
-        <div className="flex flex-col gap-2 rounded-xl border border-teal-200 bg-teal-50 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-4">
+        <div className="hidden flex-col gap-2 rounded-xl border border-teal-200 bg-teal-50 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-4 md:flex">
           <div className="flex items-start gap-3">
             <ShieldCheck
               size={21}
@@ -597,7 +629,7 @@ export default function DashboardPage() {
 
         {/* TABS */}
 
-        <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-fit">
+        <div className="hidden w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-fit md:flex">
           {tabs.map((tab) => (
             <TabButton
               key={tab.id}
@@ -1472,9 +1504,35 @@ export default function DashboardPage() {
 
         {/* FOOTER */}
 
-        <footer className="pb-3 pt-1 text-center text-xs text-slate-400">
+        <footer className="hidden pb-3 pt-1 text-center text-xs text-slate-400 md:block">
           Amrit Jal · Business Management Dashboard
         </footer>
+
+        {/* MOBILE BOTTOM APP NAVIGATION */}
+        <nav aria-label="Dashboard navigation" className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 px-3 pb-[max(env(safe-area-inset-bottom),10px)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.07)] backdrop-blur md:hidden">
+          <div className="mx-auto grid max-w-lg grid-cols-3 gap-1">
+            {[
+              { id: "today", label: "Today", icon: <CalendarDays size={20} /> },
+              { id: "finance", label: "Finance", icon: <ChartNoAxesCombined size={20} /> },
+              { id: "account", label: "Account", icon: <Users size={20} /> },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                aria-current={activeTab === item.id ? "page" : undefined}
+                className={`flex min-h-[54px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-semibold transition active:scale-95 ${
+                  activeTab === item.id
+                    ? "bg-teal-50 text-teal-800"
+                    : "text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
     </main>
   );
