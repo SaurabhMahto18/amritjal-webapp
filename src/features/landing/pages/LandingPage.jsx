@@ -8,7 +8,6 @@ import TrustHighlights from "../components/TrustHighlights";
 import AboutSection from "../components/AboutSection";
 import FeaturesSection from "../components/FeaturesSection";
 import HowItWorksSection from "../components/HowItWorksSection";
-import DashboardPreview from "../components/DashboardPreview";
 import TargetAudienceSection from "../components/TargetAudienceSection";
 import FAQSection from "../components/FAQSection";
 import CTASection from "../components/CTASection";
@@ -126,7 +125,6 @@ export default function LandingPage() {
         <FeaturesSection />
         <HowItWorksSection />
         <PricingSection />
-        <DashboardPreview />
         <TargetAudienceSection />
         <AboutSection/>
         <FAQSection />
