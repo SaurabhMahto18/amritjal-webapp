@@ -128,6 +128,7 @@ export default function LandingPage() {
         <PricingSection />
         <DashboardPreview />
         <TargetAudienceSection />
+        <AboutSection/>
         <FAQSection />
         <CTASection />
         <ContactSection />

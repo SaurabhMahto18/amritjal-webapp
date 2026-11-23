@@ -10,11 +10,16 @@ import {
   MessageCircle,
   ArrowUpRight,
   Check,
-  Droplets,
   Clock3,
   FileText,
-  Bell,
+  CalendarDays,
+  ClipboardList,
+  Boxes,
 } from "lucide-react";
+
+/* =========================================
+   FEATURE DATA
+========================================= */
 
 const features = [
   {
@@ -25,7 +30,6 @@ const features = [
     icon: Truck,
     type: "delivery",
     span: "lg:col-span-7 lg:row-span-2",
-    accent: "#63D6D2",
   },
   {
     number: "02",
@@ -35,7 +39,6 @@ const features = [
     icon: Receipt,
     type: "billing",
     span: "lg:col-span-5",
-    accent: "#F2A93B",
   },
   {
     number: "03",
@@ -45,17 +48,15 @@ const features = [
     icon: Users,
     type: "customers",
     span: "lg:col-span-5",
-    accent: "#8CBCE5",
   },
   {
     number: "04",
     title: "Jar Management",
     description:
-      "Monitor jar operations and inventory visibility.",
+      "Monitor jar operations and maintain visibility into your inventory.",
     icon: Package,
     type: "inventory",
     span: "lg:col-span-4",
-    accent: "#63D6D2",
   },
   {
     number: "05",
@@ -65,7 +66,6 @@ const features = [
     icon: Wallet,
     type: "payments",
     span: "lg:col-span-4",
-    accent: "#F2A93B",
   },
   {
     number: "06",
@@ -75,17 +75,15 @@ const features = [
     icon: ChartNoAxesCombined,
     type: "reports",
     span: "lg:col-span-4",
-    accent: "#8CBCE5",
   },
   {
     number: "07",
     title: "Employee Management",
     description:
-      "Manage employee information and team operations.",
+      "Manage employee information and keep team operations organised.",
     icon: UserRoundCog,
     type: "employees",
     span: "lg:col-span-6",
-    accent: "#B6A1E5",
   },
   {
     number: "08",
@@ -95,7 +93,6 @@ const features = [
     icon: MessageCircle,
     type: "communication",
     span: "lg:col-span-6",
-    accent: "#63D6D2",
   },
 ];
 
@@ -110,61 +107,96 @@ const additionalCapabilities = [
   "Customer follow-ups",
 ];
 
-function FeatureIcon({ icon: Icon, accent }) {
+/* =========================================
+   SHARED COMPONENTS
+========================================= */
+
+function FeatureIcon({ icon: Icon }) {
   return (
-    <span
-      className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07]"
-      style={{ color: accent }}
-    >
-      <Icon size={20} strokeWidth={1.9} />
+    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#DDECE5] bg-[#EAF5F0] text-[#087E80]">
+      <Icon size={21} strokeWidth={1.9} />
     </span>
   );
 }
 
 function PreviewPanel({ children }) {
   return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-[#0D1D30] p-4 sm:p-5">
+    <div className="mt-6 rounded-2xl border border-[#E9ECE5] bg-[#F8FAF6] p-4 sm:p-5">
       {children}
     </div>
   );
 }
 
+function PreviewHeading({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {Icon && (
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#087E80] shadow-sm">
+            <Icon size={17} />
+          </span>
+        )}
+
+        <div className="min-w-0">
+          <p className="text-[11px] font-extrabold text-[#34413D]">
+            {title}
+          </p>
+
+          {subtitle && (
+            <p className="mt-1 text-[9px] text-[#87928A]">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <span className="shrink-0 rounded-full border border-[#DCEBE3] bg-white px-2.5 py-1 text-[9px] font-bold text-[#087E80]">
+        Preview
+      </span>
+    </div>
+  );
+}
+
+/* =========================================
+   01. DELIVERY PREVIEW
+========================================= */
+
 function DeliveryPreview() {
   return (
     <PreviewPanel>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-[#8BA0B4]">
-            Delivery overview
-          </p>
-          <p className="mt-1 text-sm font-extrabold text-white">
-            Daily operations
-          </p>
-        </div>
-        <span className="rounded-full border border-[#63D6D2]/20 bg-[#63D6D2]/10 px-3 py-1.5 text-[9px] font-bold text-[#63D6D2]">
-          Sample preview
-        </span>
-      </div>
+      <PreviewHeading
+        icon={Truck}
+        title="Daily delivery overview"
+        subtitle="Organise your daily delivery operations"
+      />
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[
-          { value: "142", label: "Jars to deliver", icon: Truck, color: "#63D6D2" },
-          { value: "88", label: "Delivered", icon: Package, color: "#F2A93B" },
-          { value: "54", label: "Remaining", icon: Clock3, color: "#8CBCE5" },
+          {
+            label: "Delivery records",
+            icon: ClipboardList,
+          },
+          {
+            label: "Customer history",
+            icon: Users,
+          },
+          {
+            label: "Pending deliveries",
+            icon: Clock3,
+          },
         ].map((item, index) => {
           const Icon = item.icon;
+
           return (
             <div
               key={item.label}
-              className={`rounded-xl border border-white/[0.07] bg-white/[0.035] p-3 ${
+              className={`rounded-xl border border-[#E8ECE5] bg-white p-3 ${
                 index === 2 ? "col-span-2 sm:col-span-1" : ""
               }`}
             >
-              <Icon size={16} style={{ color: item.color }} />
-              <p className="mt-3 text-2xl font-black text-white">
-                {item.value}
-              </p>
-              <p className="mt-1 text-[9px] text-[#91A5B8]">
+              <Icon size={17} className="text-[#087E80]" />
+
+              <p className="mt-3 text-[10px] font-bold leading-5 text-[#45534D]">
                 {item.label}
               </p>
             </div>
@@ -172,44 +204,54 @@ function DeliveryPreview() {
         })}
       </div>
 
-      <div className="mt-4">
-        <div className="mb-2 flex justify-between text-[9px] font-semibold text-[#91A5B8]">
-          <span>Delivery progress</span>
-          <span>62%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-[62%] rounded-full bg-[#63D6D2]" />
-        </div>
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#E7ECE5] bg-white p-3">
+        <CalendarDays size={17} className="shrink-0 text-[#087E80]" />
+
+        <span className="text-[10px] font-semibold text-[#68766D]">
+          Maintain customer-wise delivery records
+        </span>
       </div>
     </PreviewPanel>
   );
 }
+
+/* =========================================
+   02. BILLING PREVIEW
+========================================= */
 
 function BillingPreview() {
   return (
     <PreviewPanel>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText size={16} className="text-[#F2A93B]" />
-          <span className="text-[10px] font-bold text-white">
-            Invoice preview
+      <PreviewHeading
+        icon={FileText}
+        title="Invoice management"
+        subtitle="Organised billing records"
+      />
+
+      <div className="mt-5 space-y-3">
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-[#87928A]">Customer</span>
+          <span className="font-semibold text-[#34413D]">
+            Customer account
           </span>
         </div>
-        <span className="text-[9px] font-bold text-[#F2A93B]">SAMPLE</span>
-      </div>
-      <div className="mt-4 space-y-3">
-        <div className="flex justify-between text-[10px] text-[#91A5B8]">
-          <span>Customer</span>
-          <span className="text-white">Customer account</span>
+
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-[#87928A]">Billing period</span>
+          <span className="font-semibold text-[#34413D]">
+            Monthly
+          </span>
         </div>
-        <div className="flex justify-between text-[10px] text-[#91A5B8]">
-          <span>Billing period</span>
-          <span className="text-white">Monthly</span>
-        </div>
-        <div className="border-t border-dashed border-white/15 pt-3">
-          <div className="flex justify-between text-[11px] font-extrabold text-white">
-            <span>Invoice total</span>
-            <span>₹ —</span>
+
+        <div className="border-t border-dashed border-[#DCE4DC] pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-[#53615A]">
+              Invoice total
+            </span>
+
+            <span className="text-sm font-black text-[#087E80]">
+              ₹ —
+            </span>
           </div>
         </div>
       </div>
@@ -217,77 +259,101 @@ function BillingPreview() {
   );
 }
 
+/* =========================================
+   03. CUSTOMER PREVIEW
+========================================= */
+
 function CustomerPreview() {
+  const customerItems = [
+    {
+      icon: Users,
+      title: "Customer profile",
+      subtitle: "Contact and account details",
+    },
+    {
+      icon: Truck,
+      title: "Delivery history",
+      subtitle: "Customer-wise records",
+    },
+  ];
+
   return (
     <PreviewPanel>
-      <div className="space-y-2">
-        {[
-          ["A", "Customer profile", "Contact and account details"],
-          ["B", "Delivery history", "Customer-wise records"],
-        ].map(([initial, title, subtitle]) => (
-          <div
-            key={title}
-            className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.035] p-3"
-          >
-            <span className="flex size-9 items-center justify-center rounded-lg bg-[#8CBCE5]/10 text-xs font-black text-[#8CBCE5]">
-              {initial}
-            </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-white">{title}</p>
-              <p className="mt-1 text-[9px] text-[#91A5B8]">{subtitle}</p>
+      <div className="space-y-2.5">
+        {customerItems.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div
+              key={item.title}
+              className="flex items-center gap-3 rounded-xl border border-[#E8ECE5] bg-white p-3"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#EAF5F0] text-[#087E80]">
+                <Icon size={17} />
+              </span>
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-[#34413D]">
+                  {item.title}
+                </p>
+
+                <p className="mt-1 text-[9px] text-[#87928A]">
+                  {item.subtitle}
+                </p>
+              </div>
+
+              <ArrowUpRight
+                size={14}
+                className="ml-auto shrink-0 text-[#9AA69E]"
+              />
             </div>
-            <ArrowUpRight size={14} className="ml-auto text-[#91A5B8]" />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </PreviewPanel>
   );
 }
+
+/* =========================================
+   04. INVENTORY PREVIEW
+========================================= */
 
 function InventoryPreview() {
   return (
     <PreviewPanel>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold text-white">Jar operations</span>
-        <Package size={16} className="text-[#63D6D2]" />
-      </div>
-      <div className="mt-5 flex h-14 items-end gap-1.5">
-        {Array.from({ length: 14 }).map((_, index) => (
-          <span
-            key={index}
-            className={`flex-1 rounded-t-sm ${
-              index % 4 === 0 ? "bg-[#F2A93B]" : "bg-[#63D6D2]/60"
-            }`}
-            style={{ height: `${20 + (index % 5) * 8}px` }}
-          />
-        ))}
-      </div>
-      <p className="mt-2 text-[9px] text-[#91A5B8]">
-        Illustrative inventory visual
-      </p>
-    </PreviewPanel>
-  );
-}
+      <PreviewHeading
+        icon={Package}
+        title="Jar inventory"
+        subtitle="Inventory management overview"
+      />
 
-function PaymentsPreview() {
-  return (
-    <PreviewPanel>
-      <div className="flex items-center gap-2">
-        <Wallet size={16} className="text-[#F2A93B]" />
-        <span className="text-[10px] font-bold text-white">Payment records</span>
+      <div className="mt-5 flex items-center gap-3">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#EAF5F0] text-[#087E80]">
+          <Boxes size={22} />
+        </span>
+
+        <div>
+          <p className="text-[11px] font-bold text-[#34413D]">
+            Jar operations
+          </p>
+
+          <p className="mt-1 text-[9px] text-[#87928A]">
+            Monitor inventory records and stock movement
+          </p>
+        </div>
       </div>
-      <div className="mt-4 space-y-3">
-        {["Cash", "UPI", "Bank transfer"].map((method, index) => (
-          <div key={method} className="flex items-center gap-3">
-            <span className="w-20 text-[9px] font-semibold text-[#91A5B8]">
-              {method}
-            </span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-[#63D6D2]"
-                style={{ width: `${85 - index * 22}%` }}
-              />
-            </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {["Stock records", "Jar tracking", "Inventory view"].map((label) => (
+          <div
+            key={label}
+            className="rounded-lg border border-[#E8ECE5] bg-white px-2 py-3 text-center"
+          >
+            <Check size={14} className="mx-auto text-[#087E80]" />
+
+            <p className="mt-2 text-[9px] font-semibold leading-4 text-[#68766D]">
+              {label}
+            </p>
           </div>
         ))}
       </div>
@@ -295,63 +361,172 @@ function PaymentsPreview() {
   );
 }
 
-function ReportsPreview() {
+/* =========================================
+   05. PAYMENTS PREVIEW
+========================================= */
+
+function PaymentsPreview() {
   return (
     <PreviewPanel>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[9px] font-bold text-[#91A5B8]">
-            Business insights
-          </p>
-          <p className="mt-2 text-sm font-extrabold text-white">
-            Reports & Analytics
-          </p>
-          <p className="mt-1 text-[9px] text-[#91A5B8]">
-            Review business activity
-          </p>
-        </div>
-        <span className="flex size-10 items-center justify-center rounded-xl bg-[#8CBCE5]/10 text-[#8CBCE5]">
-          <ChartNoAxesCombined size={20} />
-        </span>
+      <PreviewHeading
+        icon={Wallet}
+        title="Payment records"
+        subtitle="Organised transaction tracking"
+      />
+
+      <div className="mt-5 space-y-3">
+        {[
+          "Cash",
+          "UPI",
+          "Bank transfer",
+        ].map((method) => (
+          <div
+            key={method}
+            className="flex items-center gap-3 rounded-lg border border-[#E8ECE5] bg-white px-3 py-2.5"
+          >
+            <span className="flex size-7 items-center justify-center rounded-lg bg-[#EAF5F0] text-[#087E80]">
+              <Wallet size={14} />
+            </span>
+
+            <span className="text-[10px] font-semibold text-[#53615A]">
+              {method}
+            </span>
+
+            <Check
+              size={14}
+              className="ml-auto text-[#087E80]"
+            />
+          </div>
+        ))}
       </div>
     </PreviewPanel>
   );
 }
 
-function EmployeePreview() {
+/* =========================================
+   06. REPORTS PREVIEW
+========================================= */
+
+function ReportsPreview() {
   return (
-    <div className="mt-5 flex flex-wrap gap-2">
-      {["Employee records", "Team operations", "Salary tracking"].map((label) => (
-        <span
-          key={label}
-          className="rounded-lg border border-white/10 bg-[#0D1D30] px-3 py-2 text-[9px] font-semibold text-[#C3D0DA]"
-        >
-          {label}
-        </span>
-      ))}
-    </div>
+    <PreviewPanel>
+      <PreviewHeading
+        icon={ChartNoAxesCombined}
+        title="Reports & Analytics"
+        subtitle="Review your business activity"
+      />
+
+      <div className="mt-5 rounded-xl border border-[#E8ECE5] bg-white p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-bold text-[#53615A]">
+            Business insights
+          </p>
+
+          <ChartNoAxesCombined
+            size={18}
+            className="text-[#087E80]"
+          />
+        </div>
+
+        <div className="mt-5 flex h-16 items-end gap-2">
+          {[35, 55, 42, 72, 58, 88, 68, 95, 74, 82, 60, 90].map(
+            (height, index) => (
+              <span
+                key={index}
+                className="flex-1 rounded-t-sm bg-[#87CFC2]"
+                style={{ height: `${height}%` }}
+              />
+            )
+          )}
+        </div>
+
+        <p className="mt-3 text-[9px] text-[#87928A]">
+          Illustrative report visual
+        </p>
+      </div>
+    </PreviewPanel>
   );
 }
+
+/* =========================================
+   07. EMPLOYEE PREVIEW
+========================================= */
+
+function EmployeePreview() {
+  return (
+    <PreviewPanel>
+      <PreviewHeading
+        icon={UserRoundCog}
+        title="Team management"
+        subtitle="Organise employee information"
+      />
+
+      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {[
+          "Employee records",
+          "Team information",
+          "Work organisation",
+        ].map((label) => (
+          <div
+            key={label}
+            className="flex items-center gap-2 rounded-xl border border-[#E8ECE5] bg-white p-3"
+          >
+            <Check size={14} className="shrink-0 text-[#087E80]" />
+
+            <span className="text-[9px] font-semibold leading-4 text-[#53615A]">
+              {label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </PreviewPanel>
+  );
+}
+
+/* =========================================
+   08. COMMUNICATION PREVIEW
+========================================= */
 
 function CommunicationPreview() {
   return (
     <PreviewPanel>
       <div className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#63D6D2]/10 text-[#63D6D2]">
-          <MessageCircle size={19} />
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF5F0] text-[#087E80]">
+          <MessageCircle size={20} />
         </span>
+
         <div className="min-w-0">
-          <p className="text-[10px] font-bold text-white">
+          <p className="text-[11px] font-bold text-[#34413D]">
             Customer communication
           </p>
-          <p className="mt-1 text-[9px] leading-5 text-[#91A5B8]">
+
+          <p className="mt-1 text-[9px] leading-5 text-[#87928A]">
             Tools for customer updates and follow-ups.
           </p>
         </div>
       </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {[
+          "Customer updates",
+          "Follow-ups",
+          "Communication",
+        ].map((label) => (
+          <span
+            key={label}
+            className="rounded-lg border border-[#DCEBE3] bg-white px-3 py-2 text-[9px] font-semibold text-[#53615A]"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
     </PreviewPanel>
   );
 }
+
+/* =========================================
+   PREVIEW MAPPING
+========================================= */
 
 const previews = {
   delivery: DeliveryPreview,
@@ -364,6 +539,10 @@ const previews = {
   communication: CommunicationPreview,
 };
 
+/* =========================================
+   FEATURE CARD
+========================================= */
+
 function FeatureBentoCard({ feature }) {
   const Icon = feature.icon;
   const Preview = previews[feature.type];
@@ -372,125 +551,155 @@ function FeatureBentoCard({ feature }) {
     <article
       className={`
         group relative flex min-w-0 flex-col overflow-hidden
-        rounded-[22px] border border-[#294057]
-        bg-[#13263B] p-5
-        shadow-[0_5px_20px_rgba(0,0,0,0.12)]
+        rounded-[22px] border border-[#E7E9E1]
+        bg-white p-5
+        shadow-[0_4px_18px_rgba(36,38,43,0.035)]
         transition-all duration-300
-        hover:-translate-y-1 hover:border-[#63D6D2]/50
-        hover:shadow-[0_18px_38px_rgba(0,0,0,0.20)]
+        hover:-translate-y-1
+        hover:border-[#B9DAD0]
+        hover:shadow-[0_16px_36px_rgba(36,38,43,0.08)]
         sm:p-6
         ${feature.span}
       `}
     >
+      {/* CARD HEADER */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <FeatureIcon icon={Icon} accent={feature.accent} />
-          <span
-            className="text-[9px] font-extrabold uppercase tracking-[0.14em]"
-            style={{ color: feature.accent }}
-          >
+          <FeatureIcon icon={Icon} />
+
+          <span className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#087E80] sm:text-[10px]">
             {feature.number} · {feature.title}
           </span>
         </div>
-        <span className="shrink-0 text-xl font-black text-white/15">
+
+        <span className="shrink-0 text-xl font-black text-[#E8ECE5]">
           {feature.number}
         </span>
       </div>
 
-      <h3 className="mt-5 max-w-lg text-[19px] font-black leading-tight tracking-tight text-white sm:text-[21px]">
+      {/* CARD CONTENT */}
+      <h3 className="mt-5 max-w-lg text-[19px] font-extrabold leading-tight tracking-tight text-[#24262B] sm:text-[21px]">
         {feature.title}
       </h3>
-      <p className="mt-2 max-w-lg text-[12px] leading-6 text-[#A8B8C7] sm:text-[13px]">
+
+      <p className="mt-2 max-w-lg text-[12px] leading-6 text-[#737E78] sm:text-[13px]">
         {feature.description}
       </p>
 
+      {/* FEATURE PREVIEW */}
       {Preview && <Preview />}
     </article>
   );
 }
 
+/* =========================================
+   MAIN FEATURES SECTION
+========================================= */
+
 export default function FeaturesSection() {
   return (
     <section
       id="features"
-      className="relative isolate scroll-mt-24 overflow-hidden bg-[#0B192B] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24 xl:px-16"
+      className="relative isolate scroll-mt-24 overflow-hidden bg-[#F7F6F0] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24 xl:px-16"
     >
       {/* BACKGROUND ACCENTS */}
-      <div className="pointer-events-none absolute -left-40 top-10 -z-10 size-[420px] rounded-full bg-[#087E85]/15 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-40 bottom-10 -z-10 size-[420px] rounded-full bg-[#F2A93B]/[0.07] blur-[120px]" />
+      <div className="pointer-events-none absolute -left-40 top-10 -z-10 size-[420px] rounded-full bg-[#CDEBE3]/35 blur-[120px]" />
+
+      <div className="pointer-events-none absolute -right-40 bottom-10 -z-10 size-[420px] rounded-full bg-[#E9CA43]/10 blur-[120px]" />
 
       <div className="mx-auto max-w-[1440px]">
 
-        {/* INTRO */}
+        {/* SECTION INTRO */}
         <div className="mb-9 flex flex-col justify-between gap-5 sm:mb-12 lg:flex-row lg:items-end">
+
           <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#294057] bg-[#13263B] px-3.5 py-2">
-              <span className="size-1.5 rounded-full bg-[#63D6D2]" />
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#63D6D2]">
+
+            {/* EYEBROW */}
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#DDE8DD] bg-white px-3.5 py-2">
+              <span className="size-1.5 rounded-full bg-[#087E80]" />
+
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#087E80]">
                 Everything your business needs
               </span>
             </div>
 
-            <h2 className="text-balance text-[34px] font-black leading-[1.1] tracking-[-0.04em] text-white sm:text-[44px] lg:text-[52px]">
+            {/* HEADING */}
+            <h2 className="text-balance text-[34px] font-extrabold leading-[1.1] tracking-[-0.04em] text-[#24262B] sm:text-[44px] lg:text-[52px]">
               One app.
               <br />
+
               A whole water business{" "}
-              <span className="text-[#F2A93B]">organised.</span>
+              <span className="text-[#087E80]">
+                organised.
+              </span>
             </h2>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[#A8B8C7] sm:text-base sm:leading-8">
+            {/* DESCRIPTION */}
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[#737E78] sm:text-base sm:leading-8">
               Everything you need to manage customers, deliveries,
               inventory, billing and everyday operations — in one
               connected workspace.
             </p>
           </div>
 
+          {/* SECTION CTA */}
           <a
             href="#contact"
-            className="group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-full border border-[#3B5269] bg-[#13263B] px-5 text-xs font-bold text-white transition hover:border-[#63D6D2] hover:text-[#63D6D2] lg:self-end"
+            className="group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-full border border-[#DDE5DA] bg-white px-5 text-xs font-bold text-[#34413D] transition hover:border-[#087E80] hover:text-[#087E80] lg:self-end"
           >
             Book a Free Demo
-            <ArrowUpRight size={15} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+
+            <ArrowUpRight
+              size={15}
+              className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+            />
           </a>
         </div>
 
-        {/* BENTO GRID */}
+        {/* FEATURES BENTO GRID */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:auto-rows-auto">
+
           {features.map((feature) => (
-            <FeatureBentoCard key={feature.number} feature={feature} />
+            <FeatureBentoCard
+              key={feature.number}
+              feature={feature}
+            />
           ))}
+
         </div>
 
         {/* ADDITIONAL CAPABILITIES */}
-        <div className="mt-8 border-t border-[#294057] pt-7 sm:mt-10 sm:pt-8">
+        <div className="mt-8 border-t border-[#E1E5DC] pt-7 sm:mt-10 sm:pt-8">
+
           <div className="flex items-center gap-2">
-            <Check size={15} className="text-[#63D6D2]" />
-            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#A8B8C7]">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-[#EAF5F0] text-[#087E80]">
+              <Check size={15} />
+            </span>
+
+            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#53615A]">
               Also included in your workspace
             </h3>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
-            {[
-              "Customer records",
-              "Daily delivery records",
-              "Jar inventory visibility",
-              "Payment transactions",
-              "Customer invoices",
-              "Business reports",
-              "Employee information",
-              "Customer follow-ups",
-            ].map((item) => (
+
+            {additionalCapabilities.map((item) => (
               <div
                 key={item}
-                className="flex min-w-0 items-start gap-2 text-[11px] font-medium leading-5 text-[#A8B8C7] sm:text-xs"
+                className="flex min-w-0 items-start gap-2 text-[11px] font-medium leading-5 text-[#737E78] sm:text-xs"
               >
-                <Check size={14} className="mt-0.5 shrink-0 text-[#63D6D2]" />
+                <Check
+                  size={14}
+                  className="mt-0.5 shrink-0 text-[#087E80]"
+                />
+
                 <span>{item}</span>
               </div>
             ))}
+
           </div>
         </div>
+
       </div>
     </section>
   );

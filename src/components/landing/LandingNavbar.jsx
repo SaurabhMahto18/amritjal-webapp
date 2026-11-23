@@ -5,36 +5,137 @@ import {
   Droplets,
   Menu,
   X,
-  Download,
-  MessageCircle,
   ArrowRight,
-  ArrowUpRight,
+  ChevronDown,
   ChevronRight,
+  LayoutDashboard,
+  UserRound,
+  Sparkles,
+  BookOpen,
+  Layers3,
+  MessageCircle,
 } from "lucide-react";
 
 const navigation = [
-  { label: "Features", href: "#features" },
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Customers", href: "#customers" },
-  { label: "FAQ", href: "#faq" },
-  { label: "Blog", href: "/blog" },
-  { label: "Tools", href: "/tools" },
+  {
+    label: "Features",
+    href: "/#features",
+  },
+  {
+    label: "Solutions",
+    href: "/#who-its-for",
+  },
+  {
+    label: "How It Works",
+    href: "/#how-it-works",
+  },
+  {
+    label: "Pricing",
+    href: "/#pricing",
+  },
+  {
+    label: "Blogs",
+    href: "/blog",
+  },
+  {
+    label: "About",
+    href: "/#about",
+  },
+  {
+    label: "Contact",
+    href: "/#contact",
+  },
 ];
 
-export default function LandingNavbar() {
+const compactNavigation = [
+  navigation[0],
+  navigation[1],
+  navigation[2],
+  navigation[3],
+];
+
+const mobileLinks = [
+  ...navigation,
+  {
+    label: "Tools & Resources",
+    href: "/tools",
+  },
+];
+
+function BrandLogo({ onClick }) {
+  return (
+    <Link
+      to="/"
+      onClick={onClick}
+      aria-label="Amrit Jal homepage"
+      className="group flex shrink-0 items-center gap-2.5"
+    >
+      <span className="flex size-10 items-center justify-center rounded-xl bg-[#087E80] text-white shadow-[0_4px_12px_rgba(8,126,128,0.16)] transition-transform duration-300 group-hover:scale-105 sm:size-11">
+        <Droplets size={25} strokeWidth={2.2} />
+      </span>
+
+      <span className="leading-tight">
+        <span className="block whitespace-nowrap text-[20px] font-extrabold tracking-tight text-[#24262B] sm:text-[22px]">
+          AMRIT <span className="text-[#087E80]">JAL</span>
+        </span>
+
+        <span className="mt-0.5 block text-[8px] font-bold tracking-[0.12em] text-[#89928B] sm:text-[9px]">
+          WATER BUSINESS MANAGEMENT
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function TrialButton({ mobile = false, onClick }) {
+  return (
+    <Link
+      to="/signup"
+      onClick={onClick}
+      className={`
+        group inline-flex shrink-0 items-center justify-center gap-2
+        rounded-xl bg-[#087E80] font-bold text-white
+        shadow-[0_5px_14px_rgba(8,126,128,0.13)]
+        transition-all duration-300
+        hover:-translate-y-0.5 hover:bg-[#06696B] hover:shadow-[0_8px_20px_rgba(8,126,128,0.20)]
+        focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#087E80]/20
+        active:scale-[0.98]
+        ${
+          mobile
+            ? "min-h-10 px-3 text-[11px] sm:px-4 sm:text-xs"
+            : "min-h-11 px-4 text-xs sm:px-5 sm:text-sm"
+        }
+      `}
+    >
+      {mobile ? "Start Free" : "Start Free Trial"}
+      <ArrowRight
+        size={mobile ? 14 : 16}
+        className="transition-transform duration-300 group-hover:translate-x-1"
+      />
+    </Link>
+  );
+}
+
+export default function LandingHeader() {
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+
   const location = useLocation();
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
-  const closeMenu = () => setOpen(false);
-
-  useEffect(() => {
+  const closeMenu = () => {
     setOpen(false);
+    setAccountOpen(false);
+  };
+
+  // Close menu when route or hash changes.
+  useEffect(() => {
+    closeMenu();
   }, [location.pathname, location.hash]);
 
+  // Lock body scroll and handle Escape key.
   useEffect(() => {
     if (!open) return;
 
@@ -42,7 +143,7 @@ export default function LandingNavbar() {
 
     const handleEscape = (event) => {
       if (event.key === "Escape") {
-        setOpen(false);
+        closeMenu();
         buttonRef.current?.focus();
       }
     };
@@ -56,6 +157,7 @@ export default function LandingNavbar() {
     };
   }, [open]);
 
+  // Close menu when clicking outside.
   useEffect(() => {
     if (!open) return;
 
@@ -65,7 +167,7 @@ export default function LandingNavbar() {
         !menuRef.current.contains(event.target) &&
         !buttonRef.current?.contains(event.target)
       ) {
-        setOpen(false);
+        closeMenu();
       }
     };
 
@@ -77,145 +179,58 @@ export default function LandingNavbar() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#E5EFEE] bg-white/95 shadow-[0_4px_24px_rgba(16,31,53,0.055)] backdrop-blur-xl">
-
-      {/* MAIN NAVBAR */}
+    <header className="sticky top-0 z-50 w-full border-b border-[#E8EAE2] bg-[#FFFFFF]/95 shadow-[0_3px_20px_rgba(36,38,43,0.035)] backdrop-blur-xl">
+      {/* Main navigation */}
       <nav
         aria-label="Main navigation"
-        className="
-          relative z-20 mx-auto grid h-[68px] w-full max-w-[1600px]
-          grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4
-          sm:h-[74px] sm:px-6 lg:px-8
-          min-[1280px]:h-[82px]
-          min-[1280px]:grid-cols-[auto_minmax(0,1fr)_auto]
-          min-[1280px]:gap-3 min-[1280px]:px-6
-          min-[1440px]:gap-5 min-[1440px]:px-8
-        "
+        className="mx-auto flex h-[66px] w-full max-w-[1500px] items-center justify-between gap-3 px-4 sm:h-[72px] sm:px-6 lg:px-8 xl:px-10"
       >
+        {/* Brand */}
+        <BrandLogo onClick={closeMenu} />
 
-        {/* BRAND */}
-        <Link
-          to="/"
-          onClick={closeMenu}
-          aria-label="Amrit Jal home"
-          className="flex min-w-0 items-center gap-2.5 justify-self-start"
-        >
-          <span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[#087E85] text-white shadow-lg shadow-[#087E85]/20 sm:size-11 min-[1280px]:size-12">
-            <Droplets size={26} strokeWidth={2.2} />
-            <span className="absolute -bottom-3 -right-3 size-9 rounded-full bg-[#63D6D2]/40" />
-          </span>
-
-          <span className="min-w-0 leading-tight">
-            <span className="block whitespace-nowrap text-[20px] font-black tracking-tight text-[#101F35] sm:text-[22px]">
-              Amrit <span className="text-[#087E85]">Jal</span>
-            </span>
-
-            <span className="mt-1 hidden whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.13em] text-[#8493A2] min-[360px]:block sm:text-[10px]">
-              Business Management
-            </span>
-          </span>
-        </Link>
-
-        {/* DESKTOP NAVIGATION */}
-        <div className="hidden min-w-0 items-center justify-center gap-0 min-[1280px]:flex">
-          {navigation.map((item) => (
-            <a
+        {/* Compact desktop navigation: large tablets and laptops */}
+        <div className="hidden items-center gap-0.5 lg:flex 2xl:hidden">
+          {compactNavigation.map((item) => (
+            <Link
               key={item.label}
-              href={item.href}
-              className="
-                whitespace-nowrap rounded-lg px-2.5 py-3
-                text-[14px] font-bold text-[#47576A]
-                transition-colors duration-200
-                hover:bg-[#EAF7F5] hover:text-[#087E85]
-                focus-visible:outline-none focus-visible:ring-2
-                focus-visible:ring-[#087E85]/40
-                min-[1440px]:px-2 min-[1440px]:text-[12px]
-                min-[1600px]:px-2.5
-              "
+              to={item.href}
+              className="whitespace-nowrap rounded-lg px-2.5 py-2.5 text-[11px] font-semibold text-[#626B64] transition-colors hover:bg-[#EDF3EF] hover:text-[#087E80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087E80]/40 xl:px-3 xl:text-xs"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </div>
 
-        {/* DESKTOP ACTIONS */}
-        <div className="hidden shrink-0 items-center justify-self-end gap-1.5 min-[1280px]:flex min-[1440px]:gap-2">
-
-          <Link
-            to="/signup"
-            className="
-              inline-flex h-10 items-center justify-center gap-1
-              whitespace-nowrap rounded-full bg-[#EAF5F7]
-              px-2.5 text-[13px] font-extrabold text-[#1877A5]
-              transition hover:-translate-y-0.5 hover:bg-[#D9EFF3]
-              min-[1440px]:px-3 min-[1440px]:text-xs
-            "
-          >
-            <Download size={15} />
-            Get App
-          </Link>
-
-          <Link
-            to="/customer-login"
-            className="
-              inline-flex h-10 items-center justify-center
-              whitespace-nowrap rounded-full border border-[#DCE5E8]
-              bg-white px-2.5 text-[13px] font-bold text-[#34465A]
-              transition hover:border-[#087E85]
-              hover:bg-[#F0F8F7] hover:text-[#087E85]
-              min-[1440px]:px-3 min-[1440px]:text-xs
-            "
-          >
-            Customer Login
-          </Link>
-
-          <Link
-            to="/login"
-            className="
-              inline-flex h-10 items-center justify-center
-              whitespace-nowrap rounded-full bg-[#101F35]
-              px-2.5 text-[13px] font-bold text-white
-              transition hover:bg-[#263C56]
-              min-[1440px]:px-3 min-[1440px]:text-xs
-            "
-          >
-            Business Login
-          </Link>
-
-          <a
-            href="#contact"
-            className="
-              inline-flex h-10 items-center justify-center gap-1
-              whitespace-nowrap rounded-full bg-[#F2A93B]
-              px-2.5 text-[13px] font-extrabold text-[#172337]
-              transition hover:-translate-y-0.5 hover:bg-[#E99A20]
-              min-[1440px]:px-3 min-[1440px]:text-xs
-            "
-          >
-            <MessageCircle size={15} />
-            Book Demo
-            <ArrowRight size={14} />
-          </a>
+        {/* Full desktop navigation */}
+        <div className="hidden items-center gap-0.5 2xl:flex">
+          {navigation.map((item) => (
+            <Link
+              key={item.label}
+              to={item.href}
+              className="whitespace-nowrap rounded-lg px-3 py-2.5 text-[12px] font-semibold text-[#626B64] transition-colors hover:bg-[#EDF3EF] hover:text-[#087E80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087E80]/40"
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
 
-        {/* MOBILE / TABLET ACTIONS */}
-        <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-2 min-[1280px]:hidden">
-
-          {/* BUSINESS LOGIN OUTSIDE HAMBURGER */}
+        {/* Desktop actions */}
+        <div className="hidden shrink-0 items-center gap-2 2xl:flex">
           <Link
             to="/login"
-            className="
-              inline-flex h-10 items-center justify-center
-              whitespace-nowrap rounded-full bg-[#101F35]
-              px-3 text-[11px] font-bold text-white
-              transition hover:bg-[#263C56]
-              sm:h-11 sm:px-4 sm:text-[13px]
-            "
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#E8EAE2] bg-white px-4 text-xs font-bold text-[#3E4942] transition hover:border-[#B9D8CE] hover:bg-[#F5F8F5] hover:text-[#087E80]"
           >
-            Business Login
+            <UserRound size={16} />
+            Login
           </Link>
 
-          {/* HAMBURGER BUTTON */}
+          <TrialButton />
+        </div>
+
+        {/* Tablet and mobile actions */}
+        <div className="flex shrink-0 items-center gap-2 2xl:hidden">
+          <TrialButton mobile />
+
           <button
             ref={buttonRef}
             type="button"
@@ -223,180 +238,201 @@ export default function LandingNavbar() {
             aria-label={open ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={open}
             aria-controls="amrit-jal-mobile-menu"
-            className="
-              flex size-11 shrink-0 items-center justify-center
-              rounded-xl border border-[#DFEBE9]
-              bg-[#F0F8F7] text-[#26374B]
-              transition-all duration-200
-              hover:border-[#087E85]/30 hover:bg-[#DFF3F0]
-              hover:text-[#087E85] active:scale-95
-              focus-visible:outline-none
-              focus-visible:ring-4 focus-visible:ring-[#087E85]/15
-              sm:size-12
-            "
+            className="flex size-10 items-center justify-center rounded-xl border border-[#E8EAE2] bg-white text-[#24262B] transition hover:border-[#C8DDD3] hover:bg-[#F5F8F5] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#087E80]/15 sm:size-11"
           >
-            {open ? <X size={24} /> : <Menu size={24} />}
+            {open ? <X size={21} /> : <Menu size={21} />}
           </button>
         </div>
       </nav>
 
-      {/* MOBILE / TABLET BACKDROP */}
+      {/* Mobile backdrop */}
       <button
         type="button"
         aria-label="Close navigation menu"
         tabIndex={open ? 0 : -1}
         onClick={closeMenu}
         className={`
-          fixed inset-0 z-10 bg-[#101F35]/30
-          backdrop-blur-[2px] transition-opacity duration-300
-          min-[1280px]:hidden
+          fixed inset-0 z-40 bg-[#24262B]/35 backdrop-blur-[2px]
+          transition-opacity duration-200 2xl:hidden
           ${open ? "visible opacity-100" : "invisible opacity-0"}
         `}
       />
 
-      {/* MOBILE / TABLET DROPDOWN */}
+      {/* Mobile and tablet menu */}
       <div
         ref={menuRef}
         id="amrit-jal-mobile-menu"
         aria-hidden={!open}
         className={`
-          absolute left-0 right-0 top-full z-30
-          max-h-[calc(100dvh-68px)] overflow-y-auto
-          border-t border-[#E5EFEE] bg-white
-          px-4 pb-6 pt-4 shadow-[0_20px_50px_rgba(16,31,53,0.12)]
-          transition-all duration-300 ease-out
-          sm:px-6
-          min-[1280px]:hidden
+          absolute left-0 right-0 top-full z-50
+          max-h-[calc(100dvh-66px)] overflow-y-auto
+          border-t border-[#E8EAE2] bg-white
+          px-4 pb-6 pt-4 shadow-[0_20px_40px_rgba(36,38,43,0.12)]
+          transition-all duration-200 sm:px-6
+          2xl:hidden
           ${
             open
               ? "visible translate-y-0 opacity-100"
-              : "invisible pointer-events-none -translate-y-3 opacity-0"
+              : "invisible pointer-events-none -translate-y-2 opacity-0"
           }
         `}
       >
         <div className="mx-auto max-w-2xl">
-
-          {/* MENU INTRO */}
-          <div className="mb-5 flex items-center justify-between rounded-2xl border border-[#DDEEEB] bg-[#F0F8F7] p-4">
+          {/* Menu intro */}
+          <div className="mb-5 flex items-center justify-between rounded-2xl border border-[#E1EAE2] bg-[#EDF3EF] p-4 sm:p-5">
             <div>
-              <p className="text-base font-extrabold text-[#101F35]">
+              <p className="text-sm font-extrabold text-[#24262B]">
                 Explore Amrit Jal
               </p>
-              <p className="mt-1 text-xs text-[#718394]">
-                Everything for your water business
+
+              <p className="mt-1 text-xs leading-5 text-[#737E76]">
+                Everything you need to manage your water business.
               </p>
             </div>
 
-            <span className="flex size-12 items-center justify-center rounded-xl bg-[#087E85] text-white">
-              <Droplets size={25} />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#087E80] text-white shadow-sm">
+              <Droplets size={23} />
             </span>
           </div>
 
-          {/* NAVIGATION LINKS */}
-          <p className="mb-3 px-1 text-[11px] font-extrabold uppercase tracking-widest text-[#8493A2]">
-            Navigation
-          </p>
+          {/* Navigation links */}
+          <div className="mb-3 flex items-center justify-between px-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#929990]">
+              Explore pages
+            </p>
+
+            <span className="text-[10px] font-semibold text-[#087E80]">
+              08 sections
+            </span>
+          </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {navigation.map((item, index) => (
-              <a
+            {mobileLinks.map((item, index) => (
+              <Link
                 key={item.label}
-                href={item.href}
+                to={item.href}
                 tabIndex={open ? 0 : -1}
                 onClick={closeMenu}
-                className="
-                  group flex min-h-[66px] items-center
-                  justify-between gap-2 rounded-xl
-                  border border-[#E6EEEE] bg-white
-                  px-3.5 py-3 transition-all duration-200
-                  hover:border-[#B9E5E2] hover:bg-[#F0F8F7]
-                  active:scale-[0.98]
-                "
+                className="group flex min-h-[68px] items-center justify-between gap-2 rounded-xl border border-[#EAECE5] bg-white px-3 py-3 transition hover:border-[#B9D8CE] hover:bg-[#F5F8F5] active:scale-[0.98]"
               >
                 <span className="min-w-0">
-                  <span className="block text-[12px] font-bold text-[#9AA9B5]">
+                  <span className="block text-[9px] font-extrabold tracking-wider text-[#A2AAA1]">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span className="mt-1 block truncate text-[15px] font-bold text-[#34465A] group-hover:text-[#087E85] sm:text-sm">
+
+                  <span className="mt-1 block truncate text-[12px] font-bold text-[#3E4942] transition-colors group-hover:text-[#087E80] sm:text-[13px]">
                     {item.label}
                   </span>
                 </span>
 
                 <ChevronRight
-                  size={17}
-                  className="
-                    shrink-0 text-[#A3B0BC]
-                    transition-transform group-hover:translate-x-1
-                    group-hover:text-[#087E85]
-                  "
+                  size={15}
+                  className="shrink-0 text-[#A4ACA4] transition-transform group-hover:translate-x-1 group-hover:text-[#087E80]"
                 />
-              </a>
+              </Link>
             ))}
           </div>
 
-          {/* APPLICATION */}
+          {/* Account access */}
           <div className="mt-5">
-            <p className="mb-3 px-1 text-[12px] font-extrabold uppercase tracking-widest text-[#8493A2]">
-              Application
-            </p>
-
-            <Link
-              to="/signup"
-              onClick={closeMenu}
-              tabIndex={open ? 0 : -1}
-              className="
-                flex min-h-[52px] items-center justify-center gap-2
-                rounded-xl bg-[#EAF5F7] text-md font-extrabold
-                text-[#1877A5] transition hover:bg-[#D9EFF3]
-              "
+            <button
+              type="button"
+              onClick={() => setAccountOpen((value) => !value)}
+              aria-expanded={accountOpen}
+              aria-controls="amrit-jal-account-links"
+              className="flex min-h-12 w-full items-center justify-between rounded-xl border border-[#E8EAE2] bg-white px-4 text-sm font-bold text-[#3E4942] transition hover:bg-[#F7F8F5]"
             >
-              <Download size={18} />
-              Get App
-              <ArrowUpRight size={17} />
-            </Link>
+              <span className="flex items-center gap-2.5">
+                <UserRound size={17} className="text-[#087E80]" />
+                Account Access
+              </span>
+
+              <ChevronDown
+                size={17}
+                className={`text-[#858F87] transition-transform duration-200 ${
+                  accountOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {accountOpen && (
+              <div
+                id="amrit-jal-account-links"
+                className="mt-2 grid grid-cols-2 gap-2"
+              >
+                <Link
+                  to="/login"
+                  tabIndex={open ? 0 : -1}
+                  onClick={closeMenu}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#EDF3EF] px-2 text-xs font-bold text-[#3E4942] transition hover:bg-[#E2EEE6]"
+                >
+                  <LayoutDashboard size={15} className="text-[#087E80]" />
+                  Business Login
+                </Link>
+
+                <Link
+                  to="/customer-login"
+                  tabIndex={open ? 0 : -1}
+                  onClick={closeMenu}
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#EDF3EF] px-2 text-xs font-bold text-[#3E4942] transition hover:bg-[#E2EEE6]"
+                >
+                  <UserRound size={15} className="text-[#087E80]" />
+                  Customer Login
+                </Link>
+              </div>
+            )}
           </div>
 
-          {/* ACCOUNT ACCESS */}
-          <div className="mt-5">
-            <p className="mb-3 px-1 text-[12px] font-extrabold uppercase tracking-widest text-[#8493A2]">
-              Account Access
-            </p>
-
-            <Link
-              to="/customer-login"
-              onClick={closeMenu}
-              tabIndex={open ? 0 : -1}
-              className="
-                flex min-h-[52px] w-full items-center justify-center
-                rounded-xl border border-[#DCE5E8] px-2
-                text-md font-extrabold text-[#34465A]
-                transition hover:border-[#087E85]
-                hover:text-[#087E85]
-              "
-            >
-              Customer Login
-            </Link>
-          </div>
-
-          {/* DEMO CTA */}
-          <a
-            href="#contact"
-            onClick={closeMenu}
+          {/* Trial CTA */}
+          <Link
+            to="/signup"
             tabIndex={open ? 0 : -1}
-            className="
-              mt-3 flex min-h-[54px] items-center justify-center
-              gap-2 rounded-xl bg-[#F2A93B]
-              text-md font-extrabold text-[#172337]
-              transition hover:bg-[#E99A20] active:scale-[0.98]
-            "
+            onClick={closeMenu}
+            className="group mt-5 flex min-h-[54px] items-center justify-center gap-2 rounded-xl bg-[#087E80] px-4 text-sm font-extrabold text-white shadow-[0_6px_18px_rgba(8,126,128,0.16)] transition hover:bg-[#06696B] active:scale-[0.98]"
           >
-            <MessageCircle size={18} />
-            Book Free Demo
-            <ArrowRight size={17} />
-          </a>
+            <Sparkles size={17} />
+            Start Your Free Trial
+            <ArrowRight
+              size={17}
+              className="transition-transform group-hover:translate-x-1"
+            />
+          </Link>
 
-          <p className="mt-5 text-center text-[11px] font-medium text-[#94A1AD]">
-            Amrit Jal · Business Management
+          {/* Footer links */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 border-t border-[#EAECE5] pt-5">
+            <Link
+              to="/blog"
+              onClick={closeMenu}
+              tabIndex={open ? 0 : -1}
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#858F87] hover:text-[#087E80]"
+            >
+              <BookOpen size={13} />
+              Resources
+            </Link>
+
+            <Link
+              to="/tools"
+              onClick={closeMenu}
+              tabIndex={open ? 0 : -1}
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#858F87] hover:text-[#087E80]"
+            >
+              <Layers3 size={13} />
+              Business Tools
+            </Link>
+
+            <Link
+              to="/#contact"
+              onClick={closeMenu}
+              tabIndex={open ? 0 : -1}
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#858F87] hover:text-[#087E80]"
+            >
+              <MessageCircle size={13} />
+              Contact Support
+            </Link>
+          </div>
+
+          <p className="mt-5 text-center text-[9px] font-semibold tracking-wide text-[#A0A79F]">
+            AMRIT JAL · WATER BUSINESS MANAGEMENT
           </p>
         </div>
       </div>

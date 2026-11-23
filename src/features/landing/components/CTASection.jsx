@@ -18,82 +18,99 @@ export default function CTASection() {
     <section
       id="get-started"
       aria-labelledby="cta-heading"
-      className="relative isolate w-full overflow-hidden bg-[#0B192B] px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-10 lg:py-24 xl:px-16"
+      className="
+        relative isolate w-full overflow-hidden
+        bg-[#daf0ee] px-4 py-16
+        sm:px-6 sm:py-20
+        lg:px-10 lg:py-24 xl:px-16
+      "
     >
-      {/* GRID BACKGROUND */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]"
-        style={{
-          backgroundImage: `
-            linear-gradient(#8BA5B8 1px, transparent 1px),
-            linear-gradient(90deg, #8BA5B8 1px, transparent 1px)
-          `,
-          backgroundSize: "42px 42px",
-        }}
-      />
+      {/* Background accents */}
+      <div className="pointer-events-none absolute -right-24 -top-32 -z-10 size-[360px] rounded-full bg-[#087E80]/[0.07] blur-[100px]" />
 
-      {/* BACKGROUND GLOWS */}
-      <div className="pointer-events-none absolute -right-24 -top-32 -z-10 size-[360px] rounded-full bg-[#087E85]/25 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-40 -left-20 -z-10 size-[300px] rounded-full bg-[#E9CA43]/[0.12] blur-[100px]" />
 
-      <div className="pointer-events-none absolute -bottom-40 -left-20 -z-10 size-[300px] rounded-full bg-[#F2A93B]/10 blur-[100px]" />
+      {/* Main CTA card */}
+      <div className="relative mx-auto max-w-[1440px] overflow-hidden rounded-[28px] border border-[#EDEAE0] bg-white px-5 py-12 shadow-[0_15px_50px_rgba(36,38,43,0.05)] sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+        {/* Decorative elements */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-12 -top-16 flex size-44 items-center justify-center rounded-full border border-[#EDEAE0] bg-[#F7F6F0]/70 text-[#087E80]/10 sm:right-5 sm:top-5 sm:size-56"
+        >
+          <Droplets size={110} strokeWidth={1} />
+        </div>
 
-      {/* DECORATIVE WATER ICON */}
-      <div className="pointer-events-none absolute right-8 top-8 hidden size-28 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.025] text-[#63D6D2]/20 sm:flex lg:right-16 lg:top-12 lg:size-40">
-        <Droplets size={76} strokeWidth={1} />
-      </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 -left-20 size-64 rounded-full bg-[#E9CA43]/[0.08] blur-[70px]"
+        />
 
-      {/* CONTENT */}
-      <div className="relative mx-auto max-w-[1440px]">
-        <div className="mx-auto max-w-4xl text-center">
+        {/* Content */}
+        <div className="relative mx-auto max-w-4xl text-center">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#EDEAE0] bg-[#F7F6F0] px-4 py-2">
+            <Sparkles size={13} className="text-[#B58A35]" />
 
-          {/* EYEBROW */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#315267] bg-[#142B40] px-4 py-2">
-            <Sparkles size={13} className="text-[#F2A93B]" />
-            <span className="text-[9px] font-extrabold uppercase tracking-[0.17em] text-[#83DCD5] sm:text-[10px]">
+            <span className="text-[9px] font-extrabold uppercase tracking-[0.17em] text-[#087E80] sm:text-[10px]">
               Take control of daily operations
             </span>
           </div>
 
-          {/* HEADING */}
+          {/* Heading */}
           <h2
             id="cta-heading"
-            className="mx-auto mt-6 max-w-3xl text-balance text-[34px] font-black leading-[1.12] tracking-[-0.04em] text-white sm:text-[44px] lg:text-[56px] xl:text-[64px]"
+            className="
+              mx-auto mt-6 max-w-3xl text-balance
+              text-[34px] font-black leading-[1.12]
+              tracking-[-0.04em] text-[#24262B]
+              sm:text-[44px] lg:text-[56px] xl:text-[64px]
+            "
           >
             Ready to organise your
-            <span className="block text-[#63D6D2]">
+            <span className="block text-[#087E80]">
               water delivery business?
             </span>
           </h2>
 
-          {/* DESCRIPTION */}
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[#A8B8C7] sm:text-base sm:leading-8">
+          {/* Description */}
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-[#777970] sm:text-base sm:leading-8">
             Bring customer records, daily deliveries, jar operations,
             payments and invoices together with Amrit Jal.
             Start building a more organised business workflow.
           </p>
 
-          {/* BENEFITS */}
+          {/* Benefits */}
           <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
             {benefits.map((benefit) => (
               <span
                 key={benefit}
-                className="inline-flex items-center gap-2 text-[10px] font-medium text-[#C4D3DC] sm:text-xs"
+                className="inline-flex items-center gap-2 text-[10px] font-semibold text-[#62645D] sm:text-xs"
               >
                 <CheckCircle2
                   size={14}
-                  className="shrink-0 text-[#63D6D2]"
+                  className="shrink-0 text-[#087E80]"
                 />
                 {benefit}
               </span>
             ))}
           </div>
 
-          {/* CTA BUTTONS */}
+          {/* CTA buttons */}
           <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
             <Link
               to="/signup"
-              className="group inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#F2A93B] px-7 py-3.5 text-sm font-extrabold text-[#172B40] shadow-[0_8px_25px_rgba(242,169,59,0.2)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#FFBA52] hover:shadow-[0_12px_30px_rgba(242,169,59,0.28)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#F2A93B]/30"
+              className="
+                group inline-flex min-h-12 items-center
+                justify-center gap-3 rounded-full
+                bg-[#087E80] px-7 py-3.5
+                text-sm font-extrabold text-white
+                shadow-[0_8px_25px_rgba(8,126,128,0.16)]
+                transition-all duration-300
+                hover:-translate-y-1 hover:bg-[#06696B]
+                hover:shadow-[0_12px_30px_rgba(8,126,128,0.22)]
+                focus-visible:outline-none
+                focus-visible:ring-4 focus-visible:ring-[#087E80]/20
+              "
             >
               Get started
               <ArrowUpRight
@@ -104,14 +121,25 @@ export default function CTASection() {
 
             <Link
               to="/login"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#496075] bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:border-[#63D6D2] hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#63D6D2]/20"
+              className="
+                inline-flex min-h-12 items-center
+                justify-center gap-2 rounded-full
+                border border-[#E5E2D8] bg-white
+                px-7 py-3.5 text-sm font-bold
+                text-[#24262B]
+                transition-all duration-300
+                hover:-translate-y-0.5 hover:border-[#087E80]/40
+                hover:bg-[#F7F6F0]
+                focus-visible:outline-none
+                focus-visible:ring-4 focus-visible:ring-[#087E80]/15
+              "
             >
               Already have an account?
             </Link>
           </div>
 
-          {/* FOOTNOTE */}
-          <p className="mt-6 text-[10px] leading-5 text-[#8296A8]">
+          {/* Footnote */}
+          <p className="mt-6 text-[10px] leading-5 text-[#96968D]">
             Manage your water delivery business from one connected workspace.
           </p>
         </div>

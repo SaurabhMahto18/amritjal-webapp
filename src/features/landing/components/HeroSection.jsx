@@ -2,130 +2,99 @@
 import {
   ArrowRight,
   ArrowUpRight,
-  Droplets,
-  Truck,
-  Package,
-  Wallet,
+  Check,
+  Sparkles,
   Users,
+  Truck,
   ReceiptText,
   ChartNoAxesCombined,
-  Check,
-  MessageCircle,
-  Waves,
-  Bell,
 } from "lucide-react";
-
-const dashboardStats = [
-  {
-    label: "Today's Deliveries",
-    value: "142",
-    detail: "Delivery overview",
-    icon: Truck,
-    color: "text-[#087E85]",
-    bg: "bg-[#E6F5F3]",
-  },
-  {
-    label: "Jar Inventory",
-    value: "486",
-    detail: "Stock overview",
-    icon: Package,
-    color: "text-[#D58B27]",
-    bg: "bg-[#FFF3DF]",
-  },
-  {
-    label: "Collections",
-    value: "₹18,340",
-    detail: "Payment overview",
-    icon: Wallet,
-    color: "text-[#557FA9]",
-    bg: "bg-[#EAF2F9]",
-  },
-];
 
 const quickFeatures = [
   { icon: Users, label: "Customers" },
   { icon: Truck, label: "Deliveries" },
-  { icon: ReceiptText, label: "Billing" },
+  { icon: ReceiptText, label: "Invoices" },
   { icon: ChartNoAxesCombined, label: "Reports" },
 ];
 
 export default function HeroSection() {
   return (
     <section className="relative isolate overflow-hidden bg-[#F7F6F0]">
-      {/* BACKGROUND WATER ELEMENTS */}
+
+      {/* BACKGROUND DECORATION */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -left-40 -top-32 h-[380px] w-[380px] rounded-full bg-[#BDEAE5]/45 blur-[90px]" />
+        <div className="absolute -left-40 -top-40 size-[400px] rounded-full bg-[#CDEBE3]/50 blur-[100px]" />
 
-        <div className="absolute -right-40 top-20 h-[460px] w-[460px] rounded-full bg-[#D8F0EB]/70 blur-[100px]" />
+        <div className="absolute -right-40 top-20 size-[450px] rounded-full bg-[#DCEFE7]/70 blur-[110px]" />
 
-        <div className="absolute bottom-0 left-[35%] h-[250px] w-[450px] rounded-full bg-[#F2A93B]/[0.07] blur-[100px]" />
+        <div className="absolute bottom-0 left-[35%] h-[200px] w-[400px] rounded-full bg-[#E9CA43]/10 blur-[100px]" />
 
         <div
-          className="absolute inset-0 opacity-[0.035]"
+          className="absolute inset-0 opacity-[0.025]"
           style={{
             backgroundImage:
-              "linear-gradient(#173B4B 1px, transparent 1px), linear-gradient(90deg, #173B4B 1px, transparent 1px)",
-            backgroundSize: "54px 54px",
+              "linear-gradient(#087E80 1px, transparent 1px), linear-gradient(90deg, #087E80 1px, transparent 1px)",
+            backgroundSize: "52px 52px",
           }}
         />
       </div>
 
-      <div className="mx-auto grid w-full max-w-[1600px] items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 lg:min-h-[690px] lg:grid-cols-[1fr_0.95fr] lg:gap-8 lg:px-12 lg:py-16 xl:px-16">
+      {/* MAIN HERO CONTAINER */}
+      <div className="mx-auto grid w-full max-w-[1440px] items-center gap-12 px-4 py-12 sm:px-6 sm:py-16 lg:min-h-[720px] lg:grid-cols-[0.9fr_1.1fr] lg:gap-10 lg:px-8 lg:py-16 xl:px-10">
 
-        {/* LEFT: BRAND MESSAGE */}
-        <div className="relative z-10 mx-auto w-full max-w-[670px] lg:mx-0">
+        {/* =========================================
+            LEFT: HERO CONTENT
+        ========================================= */}
+        <div className="relative z-10 mx-auto w-full max-w-[620px] lg:mx-0">
 
           {/* EYEBROW */}
-          <div className="mb-7 inline-flex items-center gap-2.5 rounded-full border border-[#DFEAE6] bg-white/90 px-4 py-2.5 shadow-sm">
-            <span className="flex size-2 items-center justify-center rounded-full bg-[#16B9B0]">
-              <span className="size-2 animate-ping rounded-full bg-[#16B9B0] opacity-60" />
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#DDE8DD] bg-white/90 px-3.5 py-2 shadow-sm sm:mb-7">
+            <span className="flex size-6 items-center justify-center rounded-full bg-[#E8F4F0] text-[#087E80]">
+              <Sparkles size={13} />
             </span>
 
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#344B5C] sm:text-[11px]">
-              A Smarter Way to Run Your Water Business
+            <span className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#536576] sm:text-[11px]">
+              Water Business Management Software
             </span>
           </div>
 
           {/* HEADLINE */}
-          <h1 className="max-w-[700px] text-[42px] font-black leading-[1.08] tracking-[-0.045em] text-[#101F35] sm:text-[54px] lg:text-[58px] xl:text-[66px]">
-            Every Jar.
-            <br />
-            Every Delivery.
-            <br />
-            <span className="relative inline-block text-[#087E85]">
-              Under Control.
-              <span className="absolute -bottom-1 left-0 h-[4px] w-full rounded-full bg-[#F2A93B]" />
+          <h1 className="max-w-[700px] text-[39px] font-extrabold leading-[1.1] tracking-[-0.045em] text-[#24262B] sm:text-[52px] lg:text-[58px] xl:text-[64px]">
+            Run Your Water Business.
+
+            <span className="mt-1 block text-[#087E80]">
+              Smarter.
             </span>
           </h1>
 
           {/* DESCRIPTION */}
-          <p className="mt-7 max-w-[590px] text-[15px] leading-7 text-[#536576] sm:text-[17px] sm:leading-8">
-            Run your water delivery business with confidence.
+          <p className="mt-6 max-w-[560px] text-[14px] leading-7 text-[#626B70] sm:mt-7 sm:text-[17px] sm:leading-8">
             Manage customers, daily deliveries, jar inventory,
-            payments, invoices and expenses — all from one
-            simple platform.
+            invoices, payments and expenses — all from one
+            simple business management platform.
           </p>
 
           {/* HINDI BRAND STATEMENT */}
-          <div className="mt-6 flex max-w-[590px] items-start gap-3 rounded-xl border-l-[3px] border-[#F2A93B] bg-white/75 px-4 py-4 shadow-[0_5px_20px_rgba(16,31,53,0.025)]">
-            <span className="text-2xl font-black leading-none text-[#E6A033]">
+          <div className="mt-5 flex max-w-[550px] items-start gap-3 rounded-xl border-l-[3px] border-[#E9CA43] bg-white/80 px-4 py-3.5">
+            <span className="text-xl font-bold leading-none text-[#B18C20]">
               “
             </span>
 
-            <p className="text-sm font-semibold leading-7 text-[#344B5C] sm:text-[15px]">
+            <p className="text-sm font-semibold leading-6 text-[#47545A] sm:text-[15px]">
               Har delivery ka hisaab. Har jar par nazar.
               Har payment ka record.
             </p>
           </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="mt-7 flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-center">
+          {/* CTA BUTTONS */}
+          <div className="mt-7 flex flex-col gap-3 min-[440px]:flex-row min-[440px]:items-center">
 
             <a
-              href="#features"
-              className="group inline-flex min-h-[54px] items-center justify-center gap-2.5 rounded-xl bg-[#087E85] px-6 text-sm font-extrabold text-white shadow-[0_9px_24px_rgba(8,126,133,0.19)] transition duration-200 hover:-translate-y-1 hover:bg-[#066C72]"
+              href="/signup"
+              className="group inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-xl bg-[#087E80] px-6 text-sm font-bold text-white shadow-[0_9px_24px_rgba(8,126,128,0.18)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#06696B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#087E80]/20"
             >
-              Explore Amrit Jal
+              Start 30-Day Free Trial
+
               <ArrowRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"
@@ -133,257 +102,168 @@ export default function HeroSection() {
             </a>
 
             <a
-              href="#contact"
-              className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-xl border border-[#DCE6E3] bg-white px-6 text-sm font-bold text-[#263D53] transition hover:border-[#087E85] hover:bg-[#F0F8F7] hover:text-[#087E85]"
+              href="#features"
+              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl border border-[#DDE5DA] bg-white px-6 text-sm font-semibold text-[#34434A] transition hover:border-[#087E80] hover:bg-[#F5FAF7] hover:text-[#087E80]"
             >
-              <MessageCircle size={18} />
-              Book a Free Demo
-              <ArrowUpRight size={16} />
+              Explore Features
+
+              <ArrowUpRight size={17} />
             </a>
           </div>
 
           {/* TRUST POINTS */}
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3 text-xs font-medium text-[#647586]">
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2.5 text-xs font-medium text-[#687579]">
+
             <span className="inline-flex items-center gap-1.5">
-              <Check size={15} className="text-[#087E85]" />
-              Simple to manage
+              <Check size={15} className="text-[#087E80]" />
+              30-day free trial
             </span>
 
             <span className="inline-flex items-center gap-1.5">
-              <Check size={15} className="text-[#087E85]" />
-              Hindi & English
+              <Check size={15} className="text-[#087E80]" />
+              Monthly & yearly plans
             </span>
 
             <span className="inline-flex items-center gap-1.5">
-              <Check size={15} className="text-[#087E85]" />
-              Business overview
+              <Check size={15} className="text-[#087E80]" />
+              For small & large businesses
             </span>
+
           </div>
 
-          {/* FEATURE SHORTCUTS */}
-          <div className="mt-9 grid grid-cols-4 gap-2 sm:max-w-[540px] sm:gap-3">
+          {/* QUICK FEATURE SHORTCUTS */}
+          <div className="mt-8 grid grid-cols-4 gap-2 sm:max-w-[530px] sm:gap-3">
+
             {quickFeatures.map((feature) => {
               const Icon = feature.icon;
 
               return (
-                <div
+                <a
                   key={feature.label}
-                  className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-[#E2E9E4] bg-white/80 px-1 py-4 shadow-sm transition hover:-translate-y-1 hover:border-[#B8DDD7] sm:flex-row sm:justify-start sm:px-3"
+                  href="#features"
+                  className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-[#E5E9DF] bg-white/90 px-1 py-3.5 shadow-sm transition hover:-translate-y-1 hover:border-[#B9DAD0] sm:flex-row sm:justify-start sm:px-3"
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#E8F5F2] text-[#087E85]">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#E8F4F0] text-[#087E80]">
                     <Icon size={18} />
                   </span>
 
-                  <span className="truncate text-[10px] font-bold text-[#405468] sm:text-xs">
+                  <span className="truncate text-[10px] font-bold text-[#53616A] sm:text-xs">
                     {feature.label}
                   </span>
-                </div>
+                </a>
               );
             })}
+
           </div>
         </div>
 
-        {/* RIGHT: ORIGINAL PRODUCT VISUAL */}
-        <div className="relative mx-auto flex min-h-[490px] w-full max-w-[620px] items-center justify-center sm:min-h-[580px] lg:min-h-[620px]">
+        {/* =========================================
+            RIGHT: LAPTOP + MOBILE DASHBOARD
+        ========================================= */}
+        <div
+          id="product-preview"
+          className="relative mx-auto flex min-h-[390px] w-full max-w-[720px] items-center justify-center px-1 pb-12 pt-8 sm:min-h-[550px] sm:px-3 lg:min-h-[620px]"
+        >
 
-          {/* ABSTRACT WATER RIPPLES */}
+          {/* BACKGROUND WATER RIPPLES */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="absolute h-[290px] w-[290px] rounded-full border border-[#87D6CF]/35 sm:h-[420px] sm:w-[420px]" />
-            <div className="absolute h-[350px] w-[350px] rounded-full border border-[#87D6CF]/25 sm:h-[500px] sm:w-[500px]" />
-            <div className="absolute h-[410px] w-[410px] rounded-full border border-[#87D6CF]/15 sm:h-[570px] sm:w-[570px]" />
 
-            <div className="absolute h-[270px] w-[270px] rounded-full bg-[#BDEAE5]/35 blur-3xl sm:h-[390px] sm:w-[390px]" />
+            <div className="absolute size-[280px] rounded-full bg-[#CDEBE3]/50 blur-[90px] sm:size-[460px]" />
+
+            <div className="absolute size-[350px] rounded-full border border-[#87CFC2]/25 sm:size-[560px]" />
+
+            <div className="absolute size-[280px] rounded-full border border-[#87CFC2]/20 sm:size-[450px]" />
+
           </div>
 
-          {/* WATER SHAPE */}
-          <div className="pointer-events-none absolute -right-4 top-[7%] h-[170px] w-[170px] rotate-12 rounded-[55%_45%_60%_40%] bg-[#B8E7E1]/45 blur-[1px] sm:right-0 sm:h-[220px] sm:w-[220px]" />
+          {/* LAPTOP BODY */}
+          <div className="relative z-10 w-full">
 
-          <div className="pointer-events-none absolute bottom-[10%] left-0 h-[120px] w-[170px] -rotate-12 rounded-[50%_50%_35%_65%] bg-[#D5EDE7]/75 blur-[1px] sm:h-[160px] sm:w-[220px]" />
+            {/* LAPTOP SCREEN FRAME */}
+            <div className="relative overflow-hidden rounded-t-[13px] border-[5px] border-[#252A30] bg-[#252A30] shadow-[0_25px_65px_rgba(20,35,35,0.22)] sm:rounded-t-[17px] sm:border-[8px]">
 
-          {/* MAIN DASHBOARD PANEL */}
-          <div className="relative z-10 w-[min(100%,390px)] rotate-[-2deg] rounded-[28px] border border-white/90 bg-white p-3 shadow-[0_30px_80px_rgba(16,48,60,0.16)] transition-transform duration-500 hover:rotate-0 sm:rounded-[34px] sm:p-4">
-
-            {/* Dashboard top bar */}
-            <div className="flex items-center justify-between border-b border-[#EDF1EE] px-2 pb-4 pt-2">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-[#087E85] text-white shadow-sm">
-                  <Droplets size={23} />
-                </span>
-
-                <div>
-                  <p className="text-[14px] font-black tracking-tight text-[#101F35]">
-                    Amrit <span className="text-[#087E85]">Jal</span>
-                  </p>
-                  <p className="text-[9px] font-semibold text-[#91A0A9]">
-                    BUSINESS OVERVIEW
-                  </p>
-                </div>
+              {/* WEBCAM */}
+              <div className="absolute left-1/2 top-[2px] z-20 flex -translate-x-1/2 items-center justify-center">
+                <span className="size-[4px] rounded-full bg-[#75818A] ring-1 ring-[#414950] sm:size-[5px]" />
               </div>
 
-              <div className="flex size-9 items-center justify-center rounded-full bg-[#F1F6F3] text-[#55716E]">
-                <Bell size={17} />
+              {/* REAL WEB DASHBOARD SCREEN */}
+              <div className="overflow-hidden rounded-t-[5px] bg-white">
+
+                <img
+                  src="/images/landing/dashboard-desktop.png"
+                  alt="Amrit Jal web dashboard showing business overview, payments, expenses, events and invoices on a laptop"
+                  className="block h-auto w-full object-contain"
+                  loading="eager"
+                  fetchPriority="high"
+                />
+
               </div>
+
+              {/* SCREEN LABEL */}
+              <div className="absolute bottom-3 left-3 hidden items-center gap-2 rounded-full border border-[#E5EBE5] bg-white/95 px-3 py-1.5 text-[10px] font-bold text-[#34413D] shadow-sm sm:flex">
+                <span className="size-2 rounded-full bg-[#087E80]" />
+                Web Dashboard
+              </div>
+
             </div>
 
-            {/* Greeting */}
-            <div className="px-2 pt-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#91A0A9]">
-                YOUR BUSINESS AT A GLANCE
-              </p>
-              <h2 className="mt-1 text-xl font-black tracking-tight text-[#101F35]">
-                Daily Overview
-              </h2>
-            </div>
+            {/* LAPTOP HINGE */}
+            <div className="mx-auto h-[5px] w-[98%] rounded-b-md bg-[#8B9298]" />
 
-            {/* Stats */}
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              {dashboardStats.map((stat) => {
-                const Icon = stat.icon;
+            {/* LAPTOP BASE */}
+            <div className="relative mx-auto h-[12px] w-[106%] -translate-x-[3%] rounded-b-[50%] border-x border-b border-[#AEB5BA] bg-[#D9DEE1] shadow-[0_12px_18px_rgba(20,35,35,0.13)] sm:h-[16px]">
 
-                return (
-                  <div
-                    key={stat.label}
-                    className={`rounded-2xl border border-[#EDF0EB] p-3 ${stat.bg} ${
-                      stat.label === "Collections"
-                        ? "col-span-2 flex items-center justify-between"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-[#657786]">
-                        {stat.label}
-                      </span>
+              {/* TRACKPAD */}
+              <div className="absolute left-1/2 top-0 h-[4px] w-[16%] -translate-x-1/2 rounded-b-md bg-[#AEB5BA] sm:h-[5px]" />
 
-                      <Icon size={16} className={stat.color} />
-                    </div>
-
-                    <p className="mt-3 text-[23px] font-black tracking-tight text-[#172C40]">
-                      {stat.value}
-                    </p>
-
-                    <p className="mt-1 text-[9px] font-medium text-[#8997A1]">
-                      {stat.detail}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Delivery progress */}
-            <div className="mt-3 rounded-2xl border border-[#E9EFEB] bg-[#FBFCFA] p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-extrabold text-[#263D53]">
-                    Delivery Progress
-                  </p>
-                  <p className="mt-1 text-[9px] text-[#8A999F]">
-                    Sample dashboard preview
-                  </p>
-                </div>
-
-                <span className="rounded-lg bg-[#E6F5F3] px-2 py-1 text-[9px] font-bold text-[#087E85]">
-                  Overview
-                </span>
-              </div>
-
-              <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-[#E8EFEC]">
-                <div className="w-[62%] rounded-full bg-[#087E85]" />
-                <div className="w-[18%] bg-[#F2A93B]" />
-              </div>
-
-              <div className="mt-3 flex flex-wrap justify-between gap-2 text-[9px] font-semibold text-[#72838D]">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[#087E85]" />
-                  Delivered
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[#F2A93B]" />
-                  In progress
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-[#DCE5E1]" />
-                  Pending
-                </span>
-              </div>
-            </div>
-
-            {/* Feature tiles */}
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {[
-                { icon: Users, label: "Customers" },
-                { icon: Package, label: "Inventory" },
-                { icon: Wallet, label: "Payments" },
-              ].map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex flex-col items-center gap-2 rounded-xl border border-[#EDF0EB] bg-white py-3"
-                  >
-                    <Icon size={18} className="text-[#087E85]" />
-                    <span className="text-[9px] font-bold text-[#526578]">
-                      {item.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Dashboard bottom */}
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-[#101F35] px-4 py-3 text-white">
-              <div className="flex items-center gap-2">
-                <Waves size={17} className="text-[#63D6D2]" />
-                <span className="text-[10px] font-bold">
-                  Manage your business
-                </span>
-              </div>
-
-              <ArrowUpRight size={16} className="text-[#F2A93B]" />
             </div>
           </div>
 
-          {/* FLOATING CARD: CUSTOMER MANAGEMENT */}
-          <div className="absolute left-0 top-[12%] z-20 hidden items-center gap-3 rounded-2xl border border-[#E5ECE8] bg-white p-3 shadow-[0_15px_40px_rgba(16,31,53,0.10)] sm:flex">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-[#E6F5F3] text-[#087E85]">
-              <Users size={19} />
+          {/* =========================================
+              MOBILE PHONE PREVIEW
+          ========================================= */}
+          <div className="absolute bottom-2 right-0 z-30 w-[27%] min-w-[105px] max-w-[170px] overflow-hidden rounded-[20px] border-[4px] border-[#252A30] bg-[#252A30] shadow-[0_22px_50px_rgba(20,35,35,0.28)] sm:bottom-4 sm:right-[-1%] sm:w-[25%] sm:min-w-[140px] sm:rounded-[27px] sm:border-[6px]">
+
+            {/* PHONE CAMERA / NOTCH */}
+            <div className="absolute left-1/2 top-0 z-20 h-[9px] w-[35%] -translate-x-1/2 rounded-b-lg bg-[#252A30] sm:h-[12px]" />
+
+            {/* REAL MOBILE DASHBOARD */}
+            <img
+              src="/images/landing/dashboard-mobile.png"
+              alt="Amrit Jal mobile dashboard showing payments, invoices, deliveries and business events on a smartphone"
+              className="block h-auto w-full rounded-[13px] bg-white object-contain sm:rounded-[19px]"
+              loading="eager"
+            />
+
+          </div>
+
+          {/* FLOATING WEB DASHBOARD LABEL */}
+          <div className="absolute left-0 top-[3%] z-30 hidden items-center gap-2 rounded-xl border border-[#E5ECE8] bg-white px-3 py-2.5 shadow-lg sm:flex">
+
+            <span className="flex size-8 items-center justify-center rounded-lg bg-[#E8F4F0] text-[#087E80]">
+              <ChartNoAxesCombined size={17} />
             </span>
 
             <div>
-              <p className="text-[11px] font-extrabold text-[#172B40]">
-                Customer Management
+              <p className="text-[10px] font-extrabold text-[#34413D]">
+                Web Dashboard
               </p>
-              <p className="mt-1 text-[9px] text-[#83929D]">
-                Organised customer records
+
+              <p className="text-[9px] text-[#8A9695]">
+                Desktop experience
               </p>
             </div>
+
           </div>
 
-          {/* FLOATING CARD: JAR INVENTORY */}
-          <div className="absolute bottom-[16%] right-0 z-20 hidden items-center gap-3 rounded-2xl border border-[#E5ECE8] bg-white p-3 shadow-[0_15px_40px_rgba(16,31,53,0.10)] sm:flex">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-[#FFF3DF] text-[#D58B27]">
-              <Package size={19} />
-            </span>
-
-            <div>
-              <p className="text-[11px] font-extrabold text-[#172B40]">
-                Jar Inventory
-              </p>
-              <p className="mt-1 text-[9px] text-[#83929D]">
-                Track your stock
-              </p>
-            </div>
+          {/* MOBILE DASHBOARD LABEL */}
+          <div className="absolute bottom-0 right-[2%] z-30 rounded-full border border-[#DDE8DD] bg-white px-3 py-1.5 text-[9px] font-bold text-[#087E80] shadow-md sm:bottom-1">
+            Mobile Dashboard
           </div>
 
-          {/* BRAND WATER DROP */}
-          <div className="absolute bottom-[4%] left-[7%] z-20 flex size-12 items-center justify-center rounded-2xl border border-white bg-white/90 text-[#087E85] shadow-lg sm:bottom-[6%] sm:left-[10%]">
-            <Droplets size={23} />
-          </div>
         </div>
       </div>
-
-      {/* BOTTOM SOFT WAVE */}
-      <div className="pointer-events-none absolute bottom-0 left-0 h-5 w-full rounded-t-[50%] bg-white/70" />
     </section>
   );
 }
