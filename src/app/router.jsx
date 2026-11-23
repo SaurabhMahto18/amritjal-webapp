@@ -114,6 +114,8 @@ import ReportStyleInvoicePrint from "../features/invoices/print/ReportStyleInvoi
 import SummaryInvoicePrint from "../features/invoices/print/SummaryInvoicePrint";
 import StandardInvoicePrint from "../features/invoices/print/StandardInvoicePrint";
 import ThermalInvoicePrint from "../features/invoices/print/ThermalInvoicePrint";
+import PrinterSettings from "../features/invoices/pages/PrinterSettings.jsx";
+
 
 // ========================================
 // FINANCE
@@ -649,6 +651,11 @@ export default function AppRouter() {
             <Route
               path="/invoices/:invoiceId/print/report"
               element={<ReportStyleInvoicePrint />}
+            />
+
+            <Route
+              path="/invoices/printer-settings"
+              element={<PrinterSettings />}
             />
 
             {/* Expenses */}

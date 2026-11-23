@@ -1,24 +1,28 @@
 
 import { BluetoothSerial } from "@ascentio-it/capacitor-bluetooth-serial";
+import { Capacitor } from "@capacitor/core";
 
 let connectedAddress = null;
 
 function ensureAndroid() {
-  if (!window.Capacitor?.isNativePlatform?.()) {
+  if (
+    !Capacitor.isNativePlatform() ||
+    Capacitor.getPlatform() !== "android"
+  ) {
     throw new Error(
-      "Bluetooth Classic printing requires the Amrit Jal Android app."
+      "Bluetooth Classic printing requires the Android APK."
     );
-  }
-
-  if (window.Capacitor.getPlatform() !== "android") {
-    throw new Error("Bluetooth Classic is currently configured for Android.");
   }
 }
 
 function normalizeDevice(device) {
+  const address = device.address || device.id;
+
+  if (!address) return null;
+
   return {
-    id: device.address || device.id,
-    address: device.address || device.id,
+    id: address,
+    address,
     name: device.name || "Bluetooth Printer",
     connectionType: "classic",
   };
@@ -27,12 +31,19 @@ function normalizeDevice(device) {
 export async function checkBluetoothPermissions() {
   ensureAndroid();
 
-  const granted = await BluetoothSerial.checkBluetoothPermissions();
+  const granted =
+    await BluetoothSerial.checkBluetoothPermissions();
 
-  if (!granted) {
-    throw new Error(
-      "Bluetooth permission is required. Please allow Bluetooth access."
-    );
+  return Boolean(granted);
+}
+
+export async function enableBluetooth() {
+  ensureAndroid();
+
+  const result = await BluetoothSerial.enable();
+
+  if (!result?.enabled) {
+    throw new Error("Please enable Bluetooth on your phone.");
   }
 
   return true;
@@ -41,54 +52,56 @@ export async function checkBluetoothPermissions() {
 export async function isBluetoothEnabled() {
   ensureAndroid();
 
-  return BluetoothSerial.isEnabled();
+  const result = await BluetoothSerial.isEnabled();
+
+  return Boolean(result?.enabled);
 }
 
 export async function getPairedClassicPrinters() {
   ensureAndroid();
-  await checkBluetoothPermissions();
+
+  await enableBluetooth();
 
   const result = await BluetoothSerial.getPairedDevices();
 
-  const devices = Array.isArray(result)
-    ? result
-    : result?.devices || [];
-
-  return devices.map(normalizeDevice);
+  return (result?.devices || [])
+    .map(normalizeDevice)
+    .filter(Boolean);
 }
 
 export async function scanClassicPrinters() {
   ensureAndroid();
-  await checkBluetoothPermissions();
+
+  await enableBluetooth();
 
   const result = await BluetoothSerial.scan();
 
-  const devices = result?.devices || [];
-
-  return devices.map(normalizeDevice);
+  return (result?.devices || [])
+    .map(normalizeDevice)
+    .filter(Boolean);
 }
 
 export async function connectClassicPrinter(printer) {
   ensureAndroid();
-  await checkBluetoothPermissions();
 
   const address = printer?.address || printer?.id;
 
   if (!address) {
-    throw new Error("Bluetooth printer address is missing.");
+    throw new Error("Invalid Bluetooth printer address.");
   }
+
+  await enableBluetooth();
 
   try {
     await BluetoothSerial.connectInsecure({ address });
   } catch (firstError) {
-    // Retry with normal authenticated connection.
     try {
       await BluetoothSerial.connect({ address });
     } catch (secondError) {
       throw new Error(
-        `Could not connect to ${printer?.name || "printer"}: ${
-          secondError?.message || firstError?.message || "Connection failed"
-        }`
+        secondError?.message ||
+        firstError?.message ||
+        "Could not connect to Bluetooth printer."
       );
     }
   }
@@ -130,52 +143,73 @@ export async function isClassicPrinterConnected() {
       address: connectedAddress,
     });
 
-    return Boolean(result?.connected ?? result);
+    return Boolean(result?.connected);
   } catch {
     return false;
   }
 }
 
-function bytesToBinaryString(bytes) {
-  let result = "";
-  const chunkSize = 512;
+function bytesToPluginString(data) {
+  const bytes =
+    data instanceof Uint8Array
+      ? data
+      : new Uint8Array(data);
+
+  // Plugin's documented write API accepts a string,
+  // not a Uint8Array. Preserve byte values in the
+  // JavaScript string before passing them to the plugin.
+  let output = "";
+
+  const chunkSize = 4096;
 
   for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    result += String.fromCharCode(...chunk);
+    output += String.fromCharCode(
+      ...bytes.subarray(i, i + chunkSize)
+    );
   }
 
-  return result;
+  return output;
 }
 
 export async function writeClassicReceipt(data) {
   ensureAndroid();
 
   if (!connectedAddress) {
-    throw new Error("Connect a Bluetooth Classic printer first.");
+    throw new Error("No Bluetooth Classic printer connected.");
   }
 
-  const bytes =
-    data instanceof Uint8Array
-      ? data
-      : new Uint8Array(data);
+  const connected = await isClassicPrinterConnected();
 
-  if (!bytes.length) {
-    throw new Error("No receipt data to print.");
+  if (!connected) {
+    connectedAddress = null;
+    throw new Error("Bluetooth printer connection was lost.");
   }
 
-  // This serial plugin accepts a string. This conversion is suitable
-  // for basic ASCII ESC/POS commands. Arbitrary binary raster images
-  // require a native byte-array write implementation.
-  const value = bytesToBinaryString(bytes);
+  const value = bytesToPluginString(data);
 
-  await BluetoothSerial.write({
-    address: connectedAddress,
-    value,
-  });
+  // Keep chunks small to avoid oversized plugin writes.
+  const chunkSize = 512;
+
+  for (let i = 0; i < value.length; i += chunkSize) {
+    await BluetoothSerial.write({
+      address: connectedAddress,
+      value: value.slice(i, i + chunkSize),
+    });
+  }
 
   return {
     success: true,
-    message: "Receipt data sent to Bluetooth Classic printer.",
+    bytesSent: value.length,
   };
+}
+
+export function getConnectedClassicPrinter() {
+  return connectedAddress
+    ? {
+        id: connectedAddress,
+        address: connectedAddress,
+        name: "Bluetooth Classic Printer",
+        connectionType: "classic",
+      }
+    : null;
 }

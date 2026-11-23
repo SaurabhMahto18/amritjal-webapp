@@ -2,11 +2,10 @@
 import qz from "qz-tray";
 
 let isConnecting = false;
+let selectedPrinterName = null;
 
 async function ensureQzConnection() {
-  if (qz.websocket.isActive()) {
-    return true;
-  }
+  if (qz.websocket.isActive()) return true;
 
   if (isConnecting) {
     throw new Error("QZ Tray connection is already in progress.");
@@ -20,7 +19,7 @@ async function ensureQzConnection() {
   } catch (error) {
     throw new Error(
       `QZ Tray connection failed. Make sure QZ Tray is installed and running. ${
-        error?.message || ""
+        error?.message || error
       }`
     );
   } finally {
@@ -28,24 +27,38 @@ async function ensureQzConnection() {
   }
 }
 
-export async function connectPrinter(printer) {
-  if (!printer?.name) {
-    throw new Error("Please select a Windows printer.");
+function normalizePrinterName(printer) {
+  return typeof printer === "string"
+    ? printer
+    : printer?.name;
+}
+
+function normalizeBytes(data) {
+  if (data instanceof Uint8Array) return data;
+
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
   }
 
-  await ensureQzConnection();
-
-  const printers = await qz.printers.find();
-
-  if (!printers.includes(printer.name)) {
-    throw new Error("Selected printer is not available in Windows.");
+  if (ArrayBuffer.isView(data)) {
+    return new Uint8Array(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength
+    );
   }
 
-  return {
-    success: true,
-    printer: printer.name,
-    connected: true,
-  };
+  if (Array.isArray(data)) {
+    return new Uint8Array(data);
+  }
+
+  throw new Error("Invalid receipt data.");
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export async function getAvailablePrinters() {
@@ -60,72 +73,88 @@ export async function getAvailablePrinters() {
   }));
 }
 
-export async function getPrinterStatus() {
-  try {
-    const connected = qz.websocket.isActive();
+export async function connectPrinter(printer) {
+  const name = normalizePrinterName(printer);
 
-    return {
-      connected,
-      platform: "windows",
-      message: connected
-        ? "QZ Tray connected."
-        : "QZ Tray is disconnected.",
-    };
-  } catch (error) {
-    return {
-      connected: false,
-      platform: "windows",
-      message: error?.message || "Unable to check printer status.",
-    };
-  }
-}
-
-export async function disconnectPrinter() {
-  try {
-    if (qz.websocket.isActive()) {
-      await qz.websocket.disconnect();
-    }
-
-    return { success: true };
-  } catch (error) {
-    throw new Error(
-      `Unable to disconnect QZ Tray: ${error?.message || error}`
-    );
-  }
-}
-
-export async function printReceipt({
-  data,
-  printer,
-  paperWidth = "80",
-}) {
-  if (!data) {
-    throw new Error("Receipt data is missing.");
-  }
-
-  if (!printer?.name) {
-    throw new Error("Please select a printer before printing.");
+  if (!name) {
+    throw new Error("Please select a Windows printer.");
   }
 
   await ensureQzConnection();
 
   const printers = await qz.printers.find();
 
-  if (!printers.includes(printer.name)) {
-    throw new Error("The selected printer is not installed or available.");
+  if (!printers.includes(name)) {
+    throw new Error("Selected printer is not available.");
   }
 
-  const bytes =
-    data instanceof Uint8Array
-      ? data
-      : new Uint8Array(data);
+  selectedPrinterName = name;
+
+  return {
+    success: true,
+    connected: true,
+    printer: {
+      id: name,
+      name,
+      connectionType: "windows",
+    },
+  };
+}
+
+export async function getPrinterStatus() {
+  const connected = qz.websocket.isActive();
+
+  return {
+    connected,
+    platform: "windows",
+    printer: selectedPrinterName,
+    message: connected
+      ? "QZ Tray connected."
+      : "QZ Tray disconnected.",
+  };
+}
+
+export async function disconnectPrinter() {
+  selectedPrinterName = null;
+
+  if (qz.websocket.isActive()) {
+    await qz.websocket.disconnect();
+  }
+
+  return {
+    success: true,
+    connected: false,
+  };
+}
+
+export async function printReceipt({
+  data,
+  printer,
+  paperWidth = "80",
+} = {}) {
+  const printerName =
+    normalizePrinterName(printer) ||
+    selectedPrinterName;
+
+  if (!printerName) {
+    throw new Error("Select a Windows printer first.");
+  }
+
+  const bytes = normalizeBytes(data);
 
   if (!bytes.length) {
-    throw new Error("Receipt contains no printable data.");
+    throw new Error("Receipt data is empty.");
   }
 
-  const config = qz.configs.create(printer.name, {
-    encoding: "UTF-8",
+  await ensureQzConnection();
+
+  const printers = await qz.printers.find();
+
+  if (!printers.includes(printerName)) {
+    throw new Error("Selected printer is unavailable.");
+  }
+
+  const config = qz.configs.create(printerName, {
     copies: 1,
     jobName: "Amrit Jal Invoice",
   });
@@ -134,17 +163,19 @@ export async function printReceipt({
     {
       type: "raw",
       format: "command",
-      flavor: "plain",
-      data: Array.from(bytes),
+      flavor: "hex",
+      data: bytesToHex(bytes),
     },
   ];
 
   try {
     await qz.print(config, printData);
 
+    selectedPrinterName = printerName;
+
     return {
       success: true,
-      printer: printer.name,
+      printer: printerName,
       paperWidth,
       message: "Print job sent to Windows printer.",
     };
@@ -153,4 +184,19 @@ export async function printReceipt({
       `Windows printing failed: ${error?.message || error}`
     );
   }
+}
+
+export async function testPrinter({
+  printer,
+  paperWidth = "80",
+} = {}) {
+  const bytes = new TextEncoder().encode(
+    "AMRIT JAL\nPRINTER TEST\nConnection successful\n\n\n"
+  );
+
+  return printReceipt({
+    data: bytes,
+    printer,
+    paperWidth,
+  });
 }

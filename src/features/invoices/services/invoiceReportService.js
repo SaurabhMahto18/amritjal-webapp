@@ -1,3 +1,4 @@
+
 import { supabase } from "../../../lib/supabase";
 
 const toNumber = (value) => {
@@ -41,13 +42,17 @@ const isPreviousOutstandingLine = (line) => {
 };
 
 /**
- * Loads the complete, invoice-specific data set used by
- * the detailed A4 report.
+ * Loads invoice-specific data and resolves delivery lines
+ * to their actual delivery date and quantities.
  */
 export async function getInvoiceReportData(invoiceId) {
   if (!invoiceId) {
     throw new Error("Invoice ID is required.");
   }
+
+  // --------------------------------------------------
+  // 1. AUTHENTICATION
+  // --------------------------------------------------
 
   const {
     data: { user },
@@ -60,12 +65,19 @@ export async function getInvoiceReportData(invoiceId) {
     throw new Error("Please log in to view this invoice.");
   }
 
-  const { data: business, error: businessError } =
-    await supabase
-      .from("businesses")
-      .select("id, name, owner_id")
-      .eq("owner_id", user.id)
-      .maybeSingle();
+  // --------------------------------------------------
+  // 2. BUSINESS
+  // --------------------------------------------------
+
+  // Keeping the existing owner-based lookup unchanged.
+  // Team-member access should be migrated separately
+  // using the application's established business-access helper.
+
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("id, name, owner_id")
+    .eq("owner_id", user.id)
+    .maybeSingle();
 
   if (businessError) throw businessError;
 
@@ -73,15 +85,22 @@ export async function getInvoiceReportData(invoiceId) {
     throw new Error("Business profile not found.");
   }
 
-  const { data: invoice, error: invoiceError } =
-    await supabase
-      .from("invoices")
-      .select("*")
-      .eq("id", invoiceId)
-      .eq("business_id", business.id)
-      .single();
+  // --------------------------------------------------
+  // 3. INVOICE
+  // --------------------------------------------------
+
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", invoiceId)
+    .eq("business_id", business.id)
+    .single();
 
   if (invoiceError) throw invoiceError;
+
+  // --------------------------------------------------
+  // 4. FETCH RELATED DATA
+  // --------------------------------------------------
 
   const [
     customerResult,
@@ -92,7 +111,16 @@ export async function getInvoiceReportData(invoiceId) {
     supabase
       .from("customers")
       .select(
-        "id, code, name, phone, address, area, opening_balance"
+        `
+          id,
+          code,
+          name,
+          phone,
+          address,
+          area,
+          opening_balance,
+          security_deposit
+        `
       )
       .eq("id", invoice.customer_id)
       .eq("business_id", business.id)
@@ -118,30 +146,42 @@ export async function getInvoiceReportData(invoiceId) {
       .eq("business_id", business.id),
   ]);
 
-  for (const result of [
+  const results = [
     customerResult,
     linesResult,
     settingsResult,
     allocationsResult,
-  ]) {
+  ];
+
+  for (const result of results) {
     if (result.error) throw result.error;
   }
 
   const lines = linesResult.data || [];
+
+  // --------------------------------------------------
+  // 5. FETCH SOURCE DELIVERY ITEMS
+  // --------------------------------------------------
 
   const sourceItemIds = unique(
     lines.map((line) => line.source_delivery_item_id)
   );
 
   let deliveryItems = [];
-  let deliveries = [];
-  let products = [];
 
-  if (sourceItemIds.length) {
+  if (sourceItemIds.length > 0) {
     const { data, error } = await supabase
       .from("delivery_items")
       .select(
-        "id, delivery_id, product_id, quantity_delivered, quantity_returned, unit_price, line_total"
+        `
+          id,
+          delivery_id,
+          product_id,
+          quantity_delivered,
+          quantity_returned,
+          unit_price,
+          line_total
+        `
       )
       .eq("business_id", business.id)
       .in("id", sourceItemIds);
@@ -150,6 +190,10 @@ export async function getInvoiceReportData(invoiceId) {
 
     deliveryItems = data || [];
   }
+
+  // --------------------------------------------------
+  // 6. FETCH DELIVERY AND PRODUCT DETAILS
+  // --------------------------------------------------
 
   const deliveryIds = unique(
     deliveryItems.map((item) => item.delivery_id)
@@ -160,11 +204,11 @@ export async function getInvoiceReportData(invoiceId) {
     ...lines.map((line) => line.product_id),
   ]);
 
-  const secondaryResults = await Promise.all([
-    deliveryIds.length
+  const [deliveryResult, productResult] = await Promise.all([
+    deliveryIds.length > 0
       ? supabase
           .from("deliveries")
-          .select("id, delivery_date")
+          .select("id, delivery_date, customer_id")
           .eq("business_id", business.id)
           .in("id", deliveryIds)
       : Promise.resolve({
@@ -172,7 +216,7 @@ export async function getInvoiceReportData(invoiceId) {
           error: null,
         }),
 
-    productIds.length
+    productIds.length > 0
       ? supabase
           .from("products")
           .select("id, name")
@@ -184,28 +228,38 @@ export async function getInvoiceReportData(invoiceId) {
         }),
   ]);
 
-  if (secondaryResults[0].error) {
-    throw secondaryResults[0].error;
-  }
+  if (deliveryResult.error) throw deliveryResult.error;
 
-  if (secondaryResults[1].error) {
-    throw secondaryResults[1].error;
-  }
+  if (productResult.error) throw productResult.error;
 
-  deliveries = secondaryResults[0].data || [];
-  products = secondaryResults[1].data || [];
+  // --------------------------------------------------
+  // 7. CREATE LOOKUP MAPS
+  // --------------------------------------------------
 
   const deliveryById = new Map(
-    deliveries.map((row) => [row.id, row])
+    (deliveryResult.data || []).map((row) => [
+      row.id,
+      row,
+    ])
   );
 
   const deliveryItemById = new Map(
-    deliveryItems.map((row) => [row.id, row])
+    deliveryItems.map((row) => [
+      row.id,
+      row,
+    ])
   );
 
   const productById = new Map(
-    products.map((row) => [row.id, row])
+    (productResult.data || []).map((row) => [
+      row.id,
+      row,
+    ])
   );
+
+  // --------------------------------------------------
+  // 8. NORMALIZE INVOICE LINES
+  // --------------------------------------------------
 
   const normalizedLines = lines.map((line) => {
     const source = line.source_delivery_item_id
@@ -220,10 +274,16 @@ export async function getInvoiceReportData(invoiceId) {
       line.product_id || source?.product_id
     );
 
+    const isDeliveryLine = Boolean(
+      source && delivery?.delivery_date
+    );
+
     return {
       ...line,
 
+      // Invoice quantities and amounts
       quantity: toNumber(line.quantity),
+
       unit_price: toNumber(line.unit_price),
 
       line_total: toNumber(
@@ -232,23 +292,35 @@ export async function getInvoiceReportData(invoiceId) {
             toNumber(line.unit_price)
       ),
 
+      // Actual delivery information
       delivery_date: delivery?.delivery_date || null,
 
+      delivered_quantity: source
+        ? toNumber(source.quantity_delivered)
+        : 0,
+
+      returned_quantity: source
+        ? toNumber(source.quantity_returned)
+        : 0,
+
+      // Product information
       product_name:
         product?.name ||
         line.description ||
         "Product",
 
-      is_delivery_line: Boolean(
-        line.source_delivery_item_id
-      ),
+      // Line identification
+      is_delivery_line: isDeliveryLine,
 
       is_previous_outstanding:
         isPreviousOutstandingLine(line),
     };
   });
 
-  // Get invoice-specific payment allocations.
+  // --------------------------------------------------
+  // 9. PAYMENT HISTORY
+  // --------------------------------------------------
+
   const allocations = allocationsResult.data || [];
 
   const paymentIds = unique(
@@ -257,13 +329,15 @@ export async function getInvoiceReportData(invoiceId) {
 
   let payments = [];
 
-  if (paymentIds.length) {
+  if (paymentIds.length > 0) {
     const { data, error } = await supabase
       .from("payments")
       .select("*")
       .eq("business_id", business.id)
       .in("id", paymentIds)
-      .order("payment_date", { ascending: true });
+      .order("payment_date", {
+        ascending: true,
+      });
 
     if (error) throw error;
 
@@ -271,7 +345,10 @@ export async function getInvoiceReportData(invoiceId) {
   }
 
   const paymentById = new Map(
-    payments.map((row) => [row.id, row])
+    payments.map((row) => [
+      row.id,
+      row,
+    ])
   );
 
   const paymentHistory = allocations
@@ -288,6 +365,7 @@ export async function getInvoiceReportData(invoiceId) {
           `${payment.id}-${invoice.id}`,
 
         payment_id: payment.id,
+
         payment_date: payment.payment_date,
 
         method:
@@ -298,7 +376,8 @@ export async function getInvoiceReportData(invoiceId) {
         reference_no:
           payment.reference_no || null,
 
-        notes: payment.notes || null,
+        notes:
+          payment.notes || null,
 
         amount: getAllocationAmount(allocation),
 
@@ -312,9 +391,15 @@ export async function getInvoiceReportData(invoiceId) {
       )
     );
 
+  // --------------------------------------------------
+  // 10. PREVIOUS OUTSTANDING
+  // --------------------------------------------------
+
   const previousOutstandingLineAmount =
     normalizedLines
-      .filter((line) => line.is_previous_outstanding)
+      .filter(
+        (line) => line.is_previous_outstanding
+      )
       .reduce(
         (sum, line) => sum + line.line_total,
         0
@@ -326,13 +411,23 @@ export async function getInvoiceReportData(invoiceId) {
       invoice.past_due_amount
   );
 
+  // --------------------------------------------------
+  // 11. FINAL REPORT DATA
+  // --------------------------------------------------
+
   return {
     business,
+
     invoice,
+
     customer: customerResult.data || null,
+
     settings: settingsResult.data || null,
+
     items: normalizedLines,
+
     paymentHistory,
+
     previousOutstanding,
   };
 }

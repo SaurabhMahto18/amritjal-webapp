@@ -1,26 +1,58 @@
 
 import { BleClient } from "@capacitor-community/bluetooth-le";
+import { Capacitor } from "@capacitor/core";
 
 let initialized = false;
 let connectedDeviceId = null;
 let activePrinterConfig = null;
+let activeCharacteristic = null;
+let disconnecting = false;
+
+const COMMON_PRINTER_SERVICES = [
+  "000018f0-0000-1000-8000-00805f9b34fb",
+  "0000ff00-0000-1000-8000-00805f9b34fb",
+  "0000ffe0-0000-1000-8000-00805f9b34fb",
+];
+
+function ensureAndroid() {
+  if (
+    !Capacitor.isNativePlatform() ||
+    Capacitor.getPlatform() !== "android"
+  ) {
+    throw new Error("BLE printing requires the Android APK.");
+  }
+}
+
+function normalizeUuid(uuid) {
+  return String(uuid || "").toLowerCase();
+}
+
+function clearConnectionState() {
+  connectedDeviceId = null;
+  activePrinterConfig = null;
+  activeCharacteristic = null;
+}
 
 export async function initializeBle() {
-  if (!window.Capacitor?.isNativePlatform?.()) {
-    throw new Error("BLE printing requires the Android app.");
-  }
+  ensureAndroid();
 
-  if (window.Capacitor.getPlatform() !== "android") {
-    throw new Error("This BLE service is configured for Android.");
-  }
+  if (initialized) return true;
 
-  if (!initialized) {
-    await BleClient.initialize({
-      androidNeverForLocation: true,
-    });
+  await BleClient.initialize({
+    androidNeverForLocation: true,
+  });
 
-    initialized = true;
-  }
+  initialized = true;
+  return true;
+}
+
+export async function isBleEnabled() {
+  await initializeBle();
+  return BleClient.isEnabled();
+}
+
+export async function enableBle() {
+  await initializeBle();
 
   const enabled = await BleClient.isEnabled();
 
@@ -31,105 +63,307 @@ export async function initializeBle() {
   return true;
 }
 
-export async function scanBlePrinters({
-  services = [],
-  namePrefix,
-} = {}) {
-  await initializeBle();
+// -----------------------------
+// SELECT BLE PRINTER
+// -----------------------------
 
-  const options = {};
+export async function selectBlePrinter(config = {}) {
+  await enableBle();
 
-  if (services.length) {
-    options.services = services;
-  }
+  const optionalServices = [
+    ...new Set([
+      ...COMMON_PRINTER_SERVICES,
+      ...(config.optionalServices || []),
+    ]),
+  ];
 
-  const device = await BleClient.requestDevice(options);
-
-  if (!device) {
-    throw new Error("No BLE printer selected.");
-  }
-
-  if (
-    namePrefix &&
-    device.name &&
-    !device.name.toLowerCase().startsWith(namePrefix.toLowerCase())
-  ) {
-    throw new Error("Selected device does not match the printer name filter.");
-  }
+  const device = await BleClient.requestDevice({
+    optionalServices,
+    ...(config.namePrefix
+      ? { namePrefix: config.namePrefix }
+      : {}),
+  });
 
   return {
     id: device.deviceId,
-    name: device.name || "BLE Printer",
+    deviceId: device.deviceId,
+    name: device.name || "BLE Thermal Printer",
     connectionType: "ble",
+    optionalServices,
   };
 }
 
-export async function connectBlePrinter(printer, config = {}) {
-  await initializeBle();
+// -----------------------------
+// SCAN BLE PRINTERS
+// -----------------------------
 
-  const deviceId = printer?.id || printer?.deviceId;
+export async function scanBlePrinters({
+  services = [],
+  duration = 7000,
+  namePrefix,
+} = {}) {
+  await enableBle();
 
-  if (!deviceId) {
-    throw new Error("BLE printer device ID is missing.");
-  }
+  const discovered = new Map();
 
-  if (!config.serviceUUID || !config.characteristicUUID) {
-    throw new Error(
-      "BLE service UUID and write characteristic UUID are required."
-    );
-  }
+  const scanOptions = {
+    ...(services.length ? { services } : {}),
+    ...(namePrefix ? { namePrefix } : {}),
+    allowDuplicates: true,
+  };
 
   try {
-    await BleClient.connect(deviceId);
-  } catch (error) {
-    throw new Error(
-      `BLE connection failed: ${error?.message || error}`
+    await BleClient.requestLEScan(
+      scanOptions,
+      (result) => {
+        const device = result?.device;
+
+        if (!device?.deviceId) return;
+
+        discovered.set(device.deviceId, {
+          id: device.deviceId,
+          deviceId: device.deviceId,
+          name:
+            device.name ||
+            result.localName ||
+            "BLE Thermal Printer",
+          rssi: result.rssi,
+          connectionType: "ble",
+        });
+      }
     );
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, Math.max(1000, duration));
+    });
+
+    return [...discovered.values()];
+  } finally {
+    try {
+      await BleClient.stopLEScan();
+    } catch {
+      // Ignore scan cleanup errors.
+    }
+  }
+}
+
+// -----------------------------
+// SERVICE DISCOVERY
+// -----------------------------
+
+export async function getBlePrinterServices(deviceId) {
+  await initializeBle();
+
+  if (!deviceId) {
+    throw new Error("BLE device ID is missing.");
   }
 
-  connectedDeviceId = deviceId;
-
-  activePrinterConfig = {
-    serviceUUID: config.serviceUUID,
-    characteristicUUID: config.characteristicUUID,
-    writeWithoutResponse: config.writeWithoutResponse ?? true,
-    chunkSize: config.chunkSize || 180,
-    delayMs: config.delayMs ?? 20,
-  };
-
-  return {
-    success: true,
-    connected: true,
-    printer: {
-      ...printer,
-      connectionType: "ble",
-    },
-  };
+  return BleClient.getServices(deviceId);
 }
+
+function findWritableCharacteristic(
+  services,
+  preferredService,
+  preferredCharacteristic
+) {
+  const normalizedService = normalizeUuid(preferredService);
+  const normalizedCharacteristic =
+    normalizeUuid(preferredCharacteristic);
+
+  for (const service of services || []) {
+    const serviceUuid = normalizeUuid(service.uuid);
+
+    for (const characteristic of service.characteristics || []) {
+      const characteristicUuid = normalizeUuid(
+        characteristic.uuid
+      );
+
+      const properties = characteristic.properties || {};
+
+      const canWrite = Boolean(properties.write);
+      const canWriteWithoutResponse = Boolean(
+        properties.writeWithoutResponse
+      );
+
+      if (!canWrite && !canWriteWithoutResponse) continue;
+
+      if (
+        normalizedService &&
+        serviceUuid !== normalizedService
+      ) {
+        continue;
+      }
+
+      if (
+        normalizedCharacteristic &&
+        characteristicUuid !== normalizedCharacteristic
+      ) {
+        continue;
+      }
+
+      return {
+        service: service.uuid,
+        characteristic: characteristic.uuid,
+        write: canWrite,
+        writeWithoutResponse: canWriteWithoutResponse,
+      };
+    }
+  }
+
+  return null;
+}
+
+// -----------------------------
+// CONNECT BLE PRINTER
+// -----------------------------
+
+export async function connectBlePrinter(printer, config = {}) {
+  await enableBle();
+
+  const deviceId = printer?.deviceId || printer?.id;
+
+  if (!deviceId) {
+    throw new Error("BLE device ID is missing.");
+  }
+
+  if (connectedDeviceId) {
+    await disconnectBlePrinter();
+  }
+
+  await BleClient.connect(deviceId, () => {
+    if (connectedDeviceId === deviceId && !disconnecting) {
+      clearConnectionState();
+    }
+  });
+
+  try {
+    const services = await getBlePrinterServices(deviceId);
+
+    const characteristic = findWritableCharacteristic(
+      services,
+      config.serviceUUID,
+      config.characteristicUUID
+    );
+
+    if (!characteristic) {
+      throw new Error(
+        "No writable BLE characteristic found. Inspect printer services and configure its actual serviceUUID and characteristicUUID."
+      );
+    }
+
+    let mtuPayload = 20;
+
+    try {
+      const mtu = await BleClient.getMtu(deviceId);
+
+      if (Number.isFinite(mtu) && mtu > 3) {
+        mtuPayload = mtu - 3;
+      }
+    } catch {
+      // Safe default ATT payload.
+    }
+
+    const requestedChunkSize = Number(config.chunkSize);
+
+    const chunkSize =
+      Number.isFinite(requestedChunkSize) &&
+      requestedChunkSize >= 20
+        ? Math.min(requestedChunkSize, mtuPayload)
+        : mtuPayload;
+
+    connectedDeviceId = deviceId;
+    activeCharacteristic = characteristic;
+
+    activePrinterConfig = {
+      ...config,
+      chunkSize: Math.max(20, chunkSize),
+      delayMs: Math.max(
+        0,
+        Number(config.delayMs ?? 20)
+      ),
+    };
+
+    return {
+      success: true,
+      connected: true,
+      printer: {
+        ...printer,
+        id: deviceId,
+        deviceId,
+        connectionType: "ble",
+      },
+      characteristic,
+      chunkSize: activePrinterConfig.chunkSize,
+    };
+  } catch (error) {
+    try {
+      await BleClient.disconnect(deviceId);
+    } catch {
+      // Ignore cleanup error.
+    }
+
+    clearConnectionState();
+    throw error;
+  }
+}
+
+// -----------------------------
+// DISCONNECT
+// -----------------------------
 
 export async function disconnectBlePrinter() {
   if (!connectedDeviceId) {
-    return { success: true, connected: false };
+    clearConnectionState();
+
+    return {
+      success: true,
+      connected: false,
+    };
   }
 
   const deviceId = connectedDeviceId;
 
+  disconnecting = true;
+
   try {
     await BleClient.disconnect(deviceId);
   } finally {
-    connectedDeviceId = null;
-    activePrinterConfig = null;
+    clearConnectionState();
+    disconnecting = false;
   }
 
-  return { success: true, connected: false };
+  return {
+    success: true,
+    connected: false,
+  };
 }
+
+// -----------------------------
+// CONNECTION STATUS
+// -----------------------------
 
 export async function isBlePrinterConnected() {
-  return Boolean(connectedDeviceId);
+  return Boolean(
+    connectedDeviceId && activeCharacteristic
+  );
 }
 
+export function getConnectedBlePrinter() {
+  if (!connectedDeviceId) return null;
+
+  return {
+    id: connectedDeviceId,
+    deviceId: connectedDeviceId,
+    connectionType: "ble",
+  };
+}
+
+// -----------------------------
+// BYTE CONVERSION
+// -----------------------------
+
 function toDataView(bytes) {
-  const copy = new Uint8Array(bytes);
+  const copy = Uint8Array.from(bytes);
 
   return new DataView(
     copy.buffer,
@@ -138,60 +372,89 @@ function toDataView(bytes) {
   );
 }
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// -----------------------------
+// WRITE RECEIPT
+// -----------------------------
 
 export async function writeBleReceipt(data) {
-  if (!connectedDeviceId || !activePrinterConfig) {
-    throw new Error("Connect a BLE printer before printing.");
+  if (!connectedDeviceId || !activeCharacteristic) {
+    throw new Error("No BLE printer connected.");
   }
 
   const bytes =
     data instanceof Uint8Array
       ? data
-      : new Uint8Array(data);
+      : data instanceof ArrayBuffer
+        ? new Uint8Array(data)
+        : ArrayBuffer.isView(data)
+          ? new Uint8Array(
+              data.buffer,
+              data.byteOffset,
+              data.byteLength
+            )
+          : new Uint8Array(data);
 
   if (!bytes.length) {
-    throw new Error("No receipt data to print.");
+    throw new Error("Receipt data is empty.");
   }
 
+  const deviceId = connectedDeviceId;
+  const characteristic = activeCharacteristic;
+
   const {
-    serviceUUID,
-    characteristicUUID,
-    writeWithoutResponse,
-    chunkSize,
-    delayMs,
-  } = activePrinterConfig;
+    chunkSize = 20,
+    delayMs = 20,
+  } = activePrinterConfig || {};
 
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const chunk = bytes.slice(offset, offset + chunkSize);
-    const value = toDataView(chunk);
+  let bytesSent = 0;
 
-    if (writeWithoutResponse) {
+  for (
+    let offset = 0;
+    offset < bytes.length;
+    offset += chunkSize
+  ) {
+    if (connectedDeviceId !== deviceId) {
+      throw new Error("BLE printer disconnected during printing.");
+    }
+
+    const chunk = bytes.slice(
+      offset,
+      Math.min(offset + chunkSize, bytes.length)
+    );
+
+    const view = toDataView(chunk);
+
+    if (characteristic.writeWithoutResponse) {
       await BleClient.writeWithoutResponse(
-        connectedDeviceId,
-        serviceUUID,
-        characteristicUUID,
-        value
+        deviceId,
+        characteristic.service,
+        characteristic.characteristic,
+        view
+      );
+    } else if (characteristic.write) {
+      await BleClient.write(
+        deviceId,
+        characteristic.service,
+        characteristic.characteristic,
+        view
       );
     } else {
-      await BleClient.write(
-        connectedDeviceId,
-        serviceUUID,
-        characteristicUUID,
-        value
+      throw new Error(
+        "Selected BLE characteristic does not support writing."
       );
     }
 
+    bytesSent += chunk.length;
+
     if (delayMs > 0) {
-      await wait(delayMs);
+      await new Promise((resolve) => {
+        setTimeout(resolve, delayMs);
+      });
     }
   }
 
   return {
     success: true,
-    bytesSent: bytes.length,
-    message: "Receipt data sent to BLE printer.",
+    bytesSent,
   };
 }

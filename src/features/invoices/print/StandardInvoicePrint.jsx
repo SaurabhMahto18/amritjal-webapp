@@ -1,8 +1,11 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 import { useParams, Link } from "react-router-dom";
 import {
   Printer,
+  Download,
   ArrowLeft,
   LoaderCircle,
   AlertCircle,
@@ -31,6 +34,12 @@ export default function StandardInvoicePrint() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const invoicePaperRef = useRef(null);
+  const pdfFrameRef = useRef(null);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   // PRIVATE INVOICE SEO
   useEffect(() => {
@@ -134,6 +143,65 @@ export default function StandardInvoicePrint() {
           throw new Error("Invoice not found.");
         }
 
+        // Resolve invoice lines back to delivery_items so returned jar
+        // quantities come from the original delivery records.
+        const { data: invoiceLineSources, error: sourceLinesError } =
+          await supabase
+            .from("invoice_lines")
+            .select("id, source_delivery_item_id")
+            .eq("invoice_id", invoice.id)
+            .eq("business_id", business.id);
+
+        if (sourceLinesError) throw sourceLinesError;
+
+        const sourceDeliveryItemIds = [
+          ...new Set(
+            (invoiceLineSources || [])
+              .map((line) => line.source_delivery_item_id)
+              .filter(Boolean)
+          ),
+        ];
+
+        let deliveryItemById = new Map();
+
+        if (sourceDeliveryItemIds.length > 0) {
+          const { data: sourceDeliveryItems, error: deliveryItemsError } =
+            await supabase
+              .from("delivery_items")
+              .select("id, quantity_delivered, quantity_returned")
+              .eq("business_id", business.id)
+              .in("id", sourceDeliveryItemIds);
+
+          if (deliveryItemsError) throw deliveryItemsError;
+
+          deliveryItemById = new Map(
+            (sourceDeliveryItems || []).map((row) => [row.id, row])
+          );
+        }
+
+        const sourceByInvoiceLineId = new Map(
+          (invoiceLineSources || []).map((line) => [
+            line.id,
+            line.source_delivery_item_id
+              ? deliveryItemById.get(line.source_delivery_item_id) || null
+              : null,
+          ])
+        );
+
+        invoice.items = (invoice.items || []).map((item) => {
+          const source = sourceByInvoiceLineId.get(item.id);
+
+          return {
+            ...item,
+            delivered_quantity: source
+              ? toNumber(source.quantity_delivered)
+              : toNumber(item.delivered_quantity ?? item.quantity_delivered ?? item.quantity),
+            returned_quantity: source
+              ? toNumber(source.quantity_returned)
+              : toNumber(item.returned_quantity ?? item.quantity_returned ?? item.return_quantity),
+          };
+        });
+
         const [customerResult, settingsResult] =
           await Promise.all([
             supabase
@@ -184,24 +252,183 @@ export default function StandardInvoicePrint() {
     };
   }, [invoiceId]);
 
+  // GENERATE A4 PDF AFTER THE INVOICE DATA IS READY
+  useEffect(() => {
+    if (!data || !invoicePaperRef.current) return undefined;
+
+    let cancelled = false;
+    let generatedUrl = "";
+
+    setPdfGenerating(true);
+    setPdfError("");
+    setPdfUrl("");
+
+    const generatePdf = async () => {
+      try {
+        await new Promise((resolve) =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(resolve)
+          )
+        );
+
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
+        }
+
+        const images = Array.from(
+          invoicePaperRef.current?.querySelectorAll("img") || []
+        );
+
+        await Promise.all(
+          images.map((image) => {
+            if (image.complete) return Promise.resolve();
+
+            return new Promise((resolve) => {
+              image.onload = resolve;
+              image.onerror = resolve;
+            });
+          })
+        );
+
+        if (cancelled || !invoicePaperRef.current) return;
+
+        const canvas = await html2canvas(invoicePaperRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: "#ffffff",
+          logging: false,
+          windowWidth: 794,
+        });
+
+        if (cancelled) return;
+
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+          compress: true,
+        });
+
+        // Preserve the invoice's original aspect ratio. Fit the rendered
+        // invoice to the full A4 width, then split tall content across
+        // additional A4 pages instead of stretching it vertically.
+        const pageWidthMm = 210;
+        const pageHeightMm = 297;
+        const pixelsPerPage = Math.floor(
+          (canvas.width * pageHeightMm) / pageWidthMm
+        );
+
+        const pageCount = Math.ceil(canvas.height / pixelsPerPage);
+
+        for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+          if (pageIndex > 0) pdf.addPage("a4", "portrait");
+
+          const sourceY = pageIndex * pixelsPerPage;
+          const sliceHeight = Math.min(
+            pixelsPerPage,
+            canvas.height - sourceY
+          );
+
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sliceHeight;
+
+          const pageContext = pageCanvas.getContext("2d");
+          if (!pageContext) {
+            throw new Error("Unable to prepare an invoice PDF page.");
+          }
+
+          pageContext.fillStyle = "#ffffff";
+          pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          pageContext.drawImage(
+            canvas,
+            0,
+            sourceY,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight
+          );
+
+          const imageData = pageCanvas.toDataURL("image/jpeg", 0.96);
+          const sliceHeightMm =
+            (sliceHeight / canvas.width) * pageWidthMm;
+
+          pdf.addImage(
+            imageData,
+            "JPEG",
+            0,
+            0,
+            pageWidthMm,
+            Math.min(pageHeightMm, sliceHeightMm),
+            undefined,
+            "FAST"
+          );
+        }
+
+        const blob = pdf.output("blob");
+
+        if (cancelled) return;
+
+        generatedUrl = URL.createObjectURL(blob);
+        setPdfUrl(generatedUrl);
+      } catch (generationError) {
+        console.error("Standard invoice PDF generation failed:", generationError);
+
+        if (!cancelled) {
+          setPdfError(
+            generationError?.message ||
+              "Unable to generate invoice PDF."
+          );
+        }
+      } finally {
+        if (!cancelled) setPdfGenerating(false);
+      }
+    };
+
+    void generatePdf();
+
+    return () => {
+      cancelled = true;
+      if (generatedUrl) URL.revokeObjectURL(generatedUrl);
+    };
+  }, [data]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
   const items = data?.invoice?.items || [];
 
-  // EXCLUDE LOST ITEMS FROM DELIVERED QUANTITY
-  const totalQuantity = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const description = String(
-          item.description || ""
-        ).toLowerCase().trim();
+  // EXCLUDE LOST ITEMS FROM DELIVERY AND RETURN TOTALS.
+  // Returned quantities are sourced from delivery_items.quantity_returned.
+  const { totalQuantity, totalReturnedQuantity } = useMemo(() => {
+    return items.reduce(
+      (totals, item) => {
+        const description = String(item.description || "")
+          .toLowerCase()
+          .trim();
 
-        const isLost = /\blost\b/.test(description);
+        if (/\blost\b/.test(description)) return totals;
 
-        if (isLost) return sum;
+        totals.totalQuantity += toNumber(
+          item.delivered_quantity ?? item.quantity
+        );
 
-        return sum + toNumber(item.quantity);
-      }, 0),
-    [items]
-  );
+        totals.totalReturnedQuantity += toNumber(
+          item.returned_quantity ?? item.quantity_returned ?? item.return_quantity
+        );
+
+        return totals;
+      },
+      { totalQuantity: 0, totalReturnedQuantity: 0 }
+    );
+  }, [items]);
 
   if (loading) {
     return (
@@ -285,33 +512,171 @@ export default function StandardInvoicePrint() {
     .filter(Boolean)
     .join(", ");
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (!pdfUrl) return;
+
+    const frameWindow = pdfFrameRef.current?.contentWindow;
+
+    if (!frameWindow) {
+      setPdfError(
+        "PDF preview is not ready. Please download the invoice and print it from your device's PDF viewer."
+      );
+      return;
+    }
+
+    try {
+      frameWindow.focus();
+      frameWindow.print();
+      setPdfError("");
+    } catch (printError) {
+      console.error("Standard invoice print failed:", printError);
+      handleDownload();
+      setPdfError(
+        "Direct printing is not supported by this browser. The PDF download has been started; open it in your device's PDF viewer to print."
+      );
+    }
+  };
+
+  const handleDownload = () => {
+    if (!pdfUrl) return;
+
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.download = `${formatInvoiceNumber(invoice?.invoice_number || "invoice")}.pdf`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
 
   return (
-    <main className="min-h-screen bg-[#F3F6F7] px-2 py-2 font-sans text-[#24262B] sm:px-3 sm:py-3 print:min-h-0 print:bg-white print:p-0">
+    <main className="min-h-[100dvh] w-full bg-[#F3F6F7] font-sans text-[#24262B]">
 
-      {/* SCREEN ACTIONS */}
-      <div className="print:hidden mx-auto mb-2 flex max-w-[794px] items-center justify-between gap-2">
-        <Link
-          to={`/invoices/${invoiceId}`}
-          className="inline-flex items-center gap-1.5 rounded-md border border-[#DCE6E9] bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[#087F8C] hover:text-[#087F8C]"
-        >
-          <ArrowLeft size={14} />
-          Back to invoice
-        </Link>
+      {/* APP-LIKE RESPONSIVE HEADER */}
+      <header className="sticky top-0 z-30 border-b border-[#DCE6E9] bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur print:hidden sm:px-5">
+        <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3">
+          <Link
+            to={`/invoices/${invoiceId}`}
+            className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-[#DCE6E9] bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-[#087F8C] hover:text-[#087F8C]"
+          >
+            <ArrowLeft size={17} />
+            <span className="hidden xs:inline">Back</span>
+          </Link>
 
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="inline-flex items-center gap-1.5 rounded-md bg-[#087F8C] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#066B76]"
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="truncate text-sm font-bold text-[#24262B]">
+              Invoice Preview
+            </p>
+            <p className="truncate text-[11px] text-slate-500">
+              {formatInvoiceNumber(invoice?.invoice_number || "Invoice")} · A4 PDF
+            </p>
+          </div>
+
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
+            <button
+              type="button"
+              onClick={handlePrint}
+              disabled={!pdfUrl || pdfGenerating}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#087F8C] px-4 text-sm font-bold text-white transition hover:bg-[#066B76] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Printer size={16} />
+              Print
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={!pdfUrl || pdfGenerating}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#087F8C] bg-white px-4 text-sm font-bold text-[#087F8C] transition hover:bg-[#EAF5F4] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download size={16} />
+              Download PDF
+            </button>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={!pdfUrl || pdfGenerating}
+              aria-label="Download invoice PDF"
+              className="flex size-10 items-center justify-center rounded-xl border border-[#DCE6E9] bg-white text-[#087F8C] disabled:opacity-50"
+            >
+              <Download size={18} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {pdfGenerating && (
+        <div className="mx-auto mt-3 flex max-w-[1100px] items-center gap-2 px-3 text-sm text-slate-600">
+          <LoaderCircle size={17} className="animate-spin text-[#087F8C]" />
+          Preparing your A4 invoice PDF...
+        </div>
+      )}
+
+      {pdfError && (
+        <div
+          role="alert"
+          className="mx-3 mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 sm:mx-auto sm:max-w-[1100px]"
         >
-          <Printer size={14} />
-          Print / Save PDF
-        </button>
+          {pdfError}
+        </div>
+      )}
+
+      {/* RESPONSIVE PDF VIEWER */}
+      {pdfUrl ? (
+        <section className="mx-auto h-[calc(100dvh-118px)] min-h-[420px] w-full max-w-[1100px] overflow-hidden bg-[#DCE3E6] sm:h-[calc(100dvh-76px)] sm:p-3">
+          <div className="h-full overflow-hidden border-y border-[#CBD5D9] bg-white shadow-sm sm:rounded-xl sm:border">
+            <iframe
+              ref={pdfFrameRef}
+              title="Standard invoice PDF preview"
+              src={`${pdfUrl}#toolbar=1&navpanes=0&view=FitH`}
+              className="block h-full min-h-0 w-full bg-[#E9EEF0]"
+              style={{ border: 0 }}
+            />
+          </div>
+        </section>
+      ) : !pdfGenerating && !pdfError ? (
+        <div className="flex min-h-[55vh] items-center justify-center text-sm text-slate-500">
+          Preparing PDF preview...
+        </div>
+      ) : null}
+
+      {/* MOBILE APP-LIKE BOTTOM ACTION BAR */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#DCE6E9] bg-white/95 p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-4px_18px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden print:hidden">
+        <div className="mx-auto grid max-w-[600px] grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            disabled={!pdfUrl || pdfGenerating}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#087F8C] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Printer size={17} />
+            Print
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={!pdfUrl || pdfGenerating}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#087F8C] bg-white px-3 text-sm font-bold text-[#087F8C] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={17} />
+            Download PDF
+          </button>
+        </div>
       </div>
 
-      {/* INVOICE DOCUMENT */}
-      <article className="mx-auto flex w-full max-w-[794px] flex-col overflow-visible rounded-lg border border-[#DCE6E9] bg-white shadow-sm print:max-w-none print:rounded-none print:border-0 print:shadow-none">
+      {/* ORIGINAL INVOICE DESIGN: HIDDEN SOURCE FOR PDF RENDERING */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-[-100000px] top-0 z-[-1]"
+      >
+      <article
+        ref={invoicePaperRef}
+        className="mx-auto flex w-[794px] min-h-[1123px] flex-col overflow-visible rounded-lg border border-[#DCE6E9] bg-white shadow-sm"
+      >
         {/* BUSINESS HEADER */}
         <header className="flex flex-col justify-between gap-2 border-b border-[#E5ECEE] px-3 py-2 sm:flex-row sm:items-center sm:px-4 print:flex-row print:px-0 print:py-1.5">
 
@@ -467,11 +832,16 @@ export default function StandardInvoicePrint() {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-500">
-                    Delivered / Received Jars
-                  </span>
+                  <span className="text-slate-500">Delivered Jars</span>
                   <span className="rounded bg-[#EAF5F4] px-2 py-1 text-[11px] font-extrabold text-[#087F8C]">
                     {totalQuantity}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-500">Returned Jars</span>
+                  <span className="rounded bg-rose-50 px-2 py-1 text-[11px] font-extrabold text-rose-700">
+                    {totalReturnedQuantity}
                   </span>
                 </div>
               </div>
@@ -519,7 +889,14 @@ export default function StandardInvoicePrint() {
                     </td>
 
                     <td className="px-2 py-1 text-right tabular-nums">
-                      {toNumber(item.quantity) || "—"}
+                      <div className="font-semibold text-slate-800">
+                        {toNumber(item.delivered_quantity ?? item.quantity) || "—"}
+                      </div>
+                      {toNumber(item.returned_quantity ?? item.quantity_returned ?? item.return_quantity) > 0 && (
+                        <div className="mt-0.5 text-[9px] font-semibold text-rose-600">
+                          Returned: {toNumber(item.returned_quantity ?? item.quantity_returned ?? item.return_quantity)}
+                        </div>
+                      )}
                     </td>
 
                     <td className="px-2 py-1 text-right tabular-nums">
@@ -549,17 +926,17 @@ export default function StandardInvoicePrint() {
         <section className="grid grid-cols-[minmax(0,1fr)_270px] items-stretch gap-3 border-t border-slate-200 bg-[#FBFDFD] px-3 py-3 print:px-0 print:py-2">
           {/* QR CODE + BANK DETAILS */}
 
-          <div className="grid min-w-0 w-full grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border border-[#DDE8EA] bg-white p-3">
+          <div className="grid min-w-0 w-full grid-cols-[205px_minmax(0,1fr)] gap-4 rounded-md border border-[#DDE8EA] bg-white p-3">
             {/* QR CODE */}
             <div className="flex flex-col items-center justify-center">
               {settings.payment_qr_url ? (
                 <img
                   src={settings.payment_qr_url}
                   alt="Amrit Jal payment QR code"
-                  className="h-[125px] w-[125px] shrink-0 rounded-md border border-slate-200 bg-white p-1 object-contain"
+                  className="h-[180px] w-[180px] shrink-0 rounded-md border border-slate-200 bg-white p-1 object-contain"
                 />
               ) : (
-                <div className="flex h-[125px] w-[125px] items-center justify-center rounded-md border border-slate-200 text-center text-[9px] text-slate-400">
+                <div className="flex h-[180px] w-[180px] items-center justify-center rounded-md border border-slate-200 text-center text-[9px] text-slate-400">
                   QR not configured
                 </div>
               )}
@@ -709,6 +1086,7 @@ export default function StandardInvoicePrint() {
           </footer>
         </div>
       </article>
+      </div>
     </main>
   );
 }

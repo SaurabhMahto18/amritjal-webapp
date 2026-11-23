@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "npm run generate:seo && vite build",
-  "preview": "vite preview",
-  "generate:seo": "node scripts/generate-seo-files.mjs"
-},
+    "dev": "vite",
+    "build": "npm run generate:seo && vite build",
+    "preview": "vite preview",
+    "generate:seo": "node scripts/generate-seo-files.mjs"
+  },
   "dependencies": {
     "@ascentio-it/capacitor-bluetooth-serial": "^8.0.1",
     "@capacitor-community/bluetooth-le": "^8.3.0",
@@ -16,6 +16,7 @@
     "@capacitor/core": "^8.6.0",
     "@supabase/supabase-js": "^2.117.3",
     "@tailwindcss/vite": "^4.3.3",
+    "html2canvas-pro": "^2.6.4",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "lucide-react": "^1.57.0",
